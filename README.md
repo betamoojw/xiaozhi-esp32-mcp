@@ -30,7 +30,7 @@ ESP32 虾哥小智平台MCP客户端库，用于通过MCP插件将ESP32设备接
 
 ```cpp
 #include <WiFi.h>
-#include <xiaozhi_mcp.h>
+#include <WebSocketMCP.h>
 
 // WiFi配置
 const char* ssid = "your-ssid";
