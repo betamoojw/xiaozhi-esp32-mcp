@@ -1,18 +1,7 @@
-/**
- * WebSocketMCPExample.ino
- * ESP32版WebSocket MCP客户端示例
- * 用于演示如何使用WebSocketMCP库连接到MCP服务器并进行双向通信
- * 
- * 相关项目推荐：
- * 如果您需要更完整的智能家居解决方案，推荐关注 ha-esp32 项目
- * 在ESP32中实现HomeAssistant，对接小米、小度、涂鸦、天猫精灵等平台
- * 提供MCP接口，支持大模型调用，统一控制家庭设备
- * 项目地址：https://gitee.com/panzuji/ha-esp32
- */
 
 #include <Arduino.h>
 #include <WiFi.h>
-#include "WebSocketMCP.h"
+#include <WebSocketMCP.h>
 
 /********** 配置项 ***********/
 // WiFi设置
