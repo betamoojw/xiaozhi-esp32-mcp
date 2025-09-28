@@ -82,7 +82,7 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
     case WStype_DISCONNECTED:
       if (instance->connected) {
         instance->connected = false;
-        Serial.println("[xiaozhi-mcp] WebSocket connection has been disconnected")tion has been disconnected");
+        Serial.println("[xiaozhi-mcp] WebSocket connection has been disconnected");
         if (instance->connectionCallback) {
           instance->connectionCallback(false);
         }
@@ -93,7 +93,7 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
       {
         instance->connected = true;
         instance->resetReconnectParams();
-        Serial.println("[xiaozhi-mcp] WebSocket is connected")onnected");
+        Serial.println("[xiaozhi-mcp] WebSocket is connected");
         if (instance->connectionCallback) {
           instance->connectionCallback(true);
         }
@@ -123,7 +123,7 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
 
 bool WebSocketMCP::sendMessage(const String &message) {
   if (!connected) {
-    Serial.println("[xiaozhi-mcp] Not connected to WebSocket server, unable to send messages")t server, unable to send messages");
+    Serial.println("[xiaozhi-mcp] Not connected to WebSocket server, unable to send messages");
     return false;
   }
   // Send text messages to the WebSocket server (equivalent to stdin)
@@ -147,7 +147,7 @@ void WebSocketMCP::loop() {
     unsigned long now = millis();
     // If you do not receive ping for more than 2 minutes, the connection may have been disconnected
     if (now - lastPingTime > 120000) {
-      Serial.println("[xiaozhi-mcp] Ping timeout, reset connection") reset connection");
+      Serial.println("[xiaozhi-mcp] Ping timeout, reset connection");
       disconnect();
     }
   }

@@ -16,11 +16,11 @@ WebSocketMCP mcpClient;
 // Connection status callback function
 void onConnectionStatus(bool connected) {
   if (connected) {
-    Serial.println("[MCP] Connected to the server") to the server");
+    Serial.println("[MCP] Connected to the server");
     // Register tool after successful connection
     registerMcpTools();
   } else {
-    Serial.println("[MCP] Disconnect from the server") from the server");
+    Serial.println("[MCP] Disconnect from the server");
   }
 }
 
@@ -52,7 +52,7 @@ void registerMcpTools() {
       return WebSocketMCP::ToolResponse("{\"success\":true,\"state\":\"" + state + "\"}");
     }
   );
-  Serial.println("[MCP] LED Control Tool Registered")Tool Registered");
+  Serial.println("[MCP] LED Control Tool Registered");
 }
 
 void setup() {
@@ -70,7 +70,7 @@ void setup() {
     Serial.print(".");
   }
   
-  Serial.println("WiFi is connected")onnected");
+  Serial.println("WiFi is connected");
   Serial.println("IP address:" + WiFi.localIP().toString());
 
   // Initialize the MCP client

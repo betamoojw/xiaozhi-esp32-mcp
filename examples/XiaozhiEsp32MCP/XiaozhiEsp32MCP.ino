@@ -43,7 +43,7 @@ void registerMcpTools();
 void setup() {
   // Initialize the serial port
   DEBUG_SERIAL.begin(DEBUG_BAUD_RATE);
-  DEBUG_SERIAL.println("\n\n[ESP32 MCP Client] Initialization...")ialization...");
+  DEBUG_SERIAL.println("\n\n[ESP32 MCP Client] Initialization...");
   
   // Initialize LED
   pinMode(LED_PIN, OUTPUT);
@@ -54,13 +54,13 @@ void setup() {
   
   // Initialize the MCP client
   if (mcpClient.begin(MCP_ENDPOINT, onMcpConnectionChange)) {
-    DEBUG_SERIAL.println("[ESP32 MCP Client] Initialization was successful, trying to connect to the MCP server...") successful, trying to connect to the MCP server...");
+    DEBUG_SERIAL.println("[ESP32 MCP Client] Initialization was successful, trying to connect to the MCP server...");
   } else {
-    DEBUG_SERIAL.println("[ESP32 MCP Client] Initialization failed!")ialization failed!");
+    DEBUG_SERIAL.println("[ESP32 MCP Client] Initialization failed!");
   }
   
   // Show help information
-  DEBUG_SERIAL.println("\nInstructions for use:")tions for use:");
+  DEBUG_SERIAL.println("\nInstructions for use:");
   DEBUG_SERIAL.println("- Enter the command through the serial console and enter the carriage to send")through the serial console and enter the carriage to send");
   DEBUG_SERIAL.println("- Messages received from the MCP server will be displayed on the serial console")he MCP server will be displayed on the serial console");
   DEBUG_SERIAL.println("- Input\");
@@ -90,7 +90,7 @@ void loop() {
 /* *
  * Set up WiFi connection */
 void setupWifi() {
-  DEBUG_SERIAL.print("[WiFi] Connect to")t to");
+  DEBUG_SERIAL.print("[WiFi] Connect to");
   DEBUG_SERIAL.println(WIFI_SSID);
   
   // Start Connecting
@@ -108,13 +108,13 @@ void setupWifi() {
   if (WiFi.status() == WL_CONNECTED) {
     wifiConnected = true;
     DEBUG_SERIAL.println();
-    DEBUG_SERIAL.println("[WiFi] Connection is successful!")ion is successful!");
+    DEBUG_SERIAL.println("[WiFi] Connection is successful!");
     DEBUG_SERIAL.print("[WiFi] IP address:")ss:");
     DEBUG_SERIAL.println(WiFi.localIP());
   } else {
     wifiConnected = false;
     DEBUG_SERIAL.println();
-    DEBUG_SERIAL.println("[WiFi] Connection failed! Will continue to try...")d! Will continue to try...");
+    DEBUG_SERIAL.println("[WiFi] Connection failed! Will continue to try...");
   }
 }
 
@@ -151,7 +151,7 @@ void registerMcpTools() {
       
       if (error) {
         // Return an error response
-        WebSocketMCP::ToolResponse response("{\"success\":false,\"error\":\"无效的参数格式\"}", true);
+        WebSocketMCP::ToolResponse response("{\"success\":false,\"error\":\"Invalid parameter format\"}", true);
         return response;
       }
       
@@ -179,7 +179,7 @@ void registerMcpTools() {
       return WebSocketMCP::ToolResponse(resultJson);
     }
   );
-  DEBUG_SERIAL.println("[MCP] LED Control Tool Registered")Tool Registered");
+  DEBUG_SERIAL.println("[MCP] LED Control Tool Registered");
   
   // Register system information tool
   mcpClient.registerTool(
@@ -203,7 +203,7 @@ void registerMcpTools() {
       return WebSocketMCP::ToolResponse(resultJson);
     }
   );
-  DEBUG_SERIAL.println("[MCP] System Information Tool Registered")rmation Tool Registered");
+  DEBUG_SERIAL.println("[MCP] System Information Tool Registered");
   
   // Register Calculator Tool (Simple Example)
   mcpClient.registerTool(
@@ -237,7 +237,7 @@ void registerMcpTools() {
       return WebSocketMCP::ToolResponse(resultJson);
     }
   );
-  DEBUG_SERIAL.println("[MCP] Calculator Tool Registered") Tool Registered");
+  DEBUG_SERIAL.println("[MCP] Calculator Tool Registered");
   
   DEBUG_SERIAL.println("[MCP] Tool registration is completed, total" + String(mcpClient.getToolCount()) + "A tool");
 }
@@ -247,11 +247,11 @@ void registerMcpTools() {
 void onMcpConnectionChange(bool connected) {
   mcpConnected = connected;
   if (connected) {
-    DEBUG_SERIAL.println("[MCP] Connected to the MCP server") the MCP server");
+    DEBUG_SERIAL.println("[MCP] Connected to the MCP server");
     // Register tool after successful connection
     registerMcpTools();
   } else {
-    DEBUG_SERIAL.println("[MCP] Disconnect from the MCP server")om the MCP server");
+    DEBUG_SERIAL.println("[MCP] Disconnect from the MCP server");
   }
 }
 
@@ -289,7 +289,7 @@ void processSerialCommands() {
               mcpClient.sendMessage(command);
               DEBUG_SERIAL.println("[Send]" + command);
             } else {
-              DEBUG_SERIAL.println("Not connected to the MCP server, unable to send commands")e MCP server, unable to send commands");
+              DEBUG_SERIAL.println("Not connected to the MCP server, unable to send commands");
             }
           }
         }
@@ -316,24 +316,24 @@ void processSerialCommands() {
 /* *
  * Print help information */
 void printHelp() {
-  DEBUG_SERIAL.println("Available commands:")le commands:");
-  DEBUG_SERIAL.println("help - Show this help information")information");
-  DEBUG_SERIAL.println("status - display the current connection status")rrent connection status");
-  DEBUG_SERIAL.println("reconnect - Reconnect to the MCP server")e MCP server");
+  DEBUG_SERIAL.println("Available commands:");
+  DEBUG_SERIAL.println("help - Show this help information");
+  DEBUG_SERIAL.println("status - display the current connection status");
+  DEBUG_SERIAL.println("reconnect - Reconnect to the MCP server");
   DEBUG_SERIAL.println("tools - View registered tools")d tools");
-  DEBUG_SERIAL.println("Any other text will be sent directly to the MCP server") sent directly to the MCP server");
+  DEBUG_SERIAL.println("Any other text will be sent directly to the MCP server");
 }
 
 /* *
  * Print the current status */
 void printStatus() {
-  DEBUG_SERIAL.println("Current status:") status:");
+  DEBUG_SERIAL.println("Current status:");
   DEBUG_SERIAL.print("  WiFi: ");
   DEBUG_SERIAL.println(wifiConnected ? "Connected" : "Not connected");
   if (wifiConnected) {
     DEBUG_SERIAL.print("IP address:"):");
     DEBUG_SERIAL.println(WiFi.localIP());
-    DEBUG_SERIAL.print("Signal strength:")ength:");
+    DEBUG_SERIAL.print("Signal strength:");
     DEBUG_SERIAL.println(WiFi.RSSI());
   }
   DEBUG_SERIAL.print("MCP Server:"));

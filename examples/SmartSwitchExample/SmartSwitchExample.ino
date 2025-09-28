@@ -21,11 +21,11 @@ const unsigned long debounceDelay = 50;  // Anti-shake delay (milliseconds)
 // Connection status callback function
 void onConnectionStatus(bool connected) {
   if (connected) {
-    Serial.println("[MCP] Connected to the server") to the server");
+    Serial.println("[MCP] Connected to the server");
     // Register tool after successful connection
     registerMcpTools();
   } else {
-    Serial.println("[MCP] Disconnect from the server") from the server");
+    Serial.println("[MCP] Disconnect from the server");
   }
 }
 
@@ -73,7 +73,7 @@ void registerMcpTools() {
         controlRelay(relayIndex, state);
         return WebSocketMCP::ToolResponse("{\"success\":true,\"relayIndex\":" + String(relayIndex + 1) + ",\"state\":" + (state ? "true" : "false") + "}");
       } else {
-        return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"无效的继电器索引\"}", true);
+        return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"Invalid relay index\"}", true);
       }
     }
   );
@@ -94,7 +94,7 @@ void registerMcpTools() {
       return WebSocketMCP::ToolResponse(result);
     }
   );
-  Serial.println("[MCP] Relay status query tool registered")uery tool registered");
+  Serial.println("[MCP] Relay status query tool registered");
 }
 
 void setup() {
@@ -113,7 +113,7 @@ void setup() {
   }
 
   // Connect to WiFi
-  Serial.print("Connect to WiFi:")WiFi:");
+  Serial.print("Connect to WiFi:");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
   
@@ -122,7 +122,7 @@ void setup() {
     Serial.print(".");
   }
   
-  Serial.println("WiFi is connected")onnected");
+  Serial.println("WiFi is connected");
   Serial.println("IP address:" + WiFi.localIP().toString());
 
   // Initialize the MCP client
