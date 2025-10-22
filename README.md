@@ -1,276 +1,280 @@
-# xiaozhi-mcp库
+# xiaozhi-mcp library
 
-ESP32 虾哥小智平台MCP客户端库，用于通过MCP插件将ESP32设备接入虾哥小智平台，支持工具注册和调用，可通过小智AI音箱控制设备。
+This library is the MCP client library for the ESP32 Xiaozhi platform. It connects ESP32 devices to the Xiaozhi platform via the MCP plugin. It supports tool registration and invocation, and can control the device through the Xiaozhi AI speaker.
 
-## 功能特点
-- 支持WebSocket和WebSocket Secure (WSS)连接
-- 自动重连机制，确保连接稳定性
-- 支持JSON-RPC协议通信
-- 工具注册和调用系统
-- 灵活的回调函数机制
-- 支持ESP32平台
+## Features
+- Supports WebSocket and WebSocket Secure (WSS) connections
+- Automatic reconnection mechanism to ensure connection stability
+- Supports JSON-RPC protocol communication
+- Tool registration and call system
+- Flexible callback function mechanism
+- Support for the ESP32 platform
 
-## 安装指南
+## Installation Guide
 
-### 方法1：通过Arduino库管理器
-1. 打开Arduino IDE
-2. 点击"工具" -> "管理库..."
-3. 在搜索框中输入"xiaozhi_mcp"
-4. 点击"安装"按钮
+### Method 1: Using the Arduino Library Manager
+1. Open the Arduino IDE
+2. Click "Tools" -> "Manage Libraries..."
+3. Enter "xiaozhi_mcp" in the search box
+4. Click "Install"
 
-### 方法2：手动安装
-1. 下载本库的ZIP文件
-2. 打开Arduino IDE
-3. 点击"项目" -> "导入库" -> "添加.ZIP库..."
-4. 选择下载的ZIP文件
+### Method 2: Manual Installation
+1. Download the library's ZIP file
+2. Open the Arduino IDE
+3. Click "Project" -> "Import Libraries" -> "Add .ZIP Library..."
+4. Select the downloaded ZIP file
 
-## 快速开始
+## Quick Start
 
-以下是一个完整的使用示例，展示如何连接到MCP服务器并注册工具：
+The following is a complete example showing how to connect to the MCP server and register the tool:
 
 ```cpp
 #include <WiFi.h>
 #include <WebSocketMCP.h>
 
-// WiFi配置
+// WiFi configuration
 const char* ssid = "your-ssid";
 const char* password = "your-password";
 
-// MCP服务器配置
+// MCP server configuration
 const char* mcpEndpoint = "ws://your-mcp-server:port/path";
 
-// 创建WebSocketMCP实例
+// Create a WebSocketMCP instance
 WebSocketMCP mcpClient;
 
-// 连接状态回调函数
+// Connection status callback function
 void onConnectionStatus(bool connected) {
-  if (connected) {
-    Serial.println("[MCP] 已连接到服务器");
-    // 连接成功后注册工具
-    registerMcpTools();
-  } else {
-    Serial.println("[MCP] 与服务器断开连接");
-  }
+if (connected) {
+Serial.println("[MCP] connected to the server");
+// Register the tool after successful connection
+registerMcpTools();
+} else {
+Serial.println("[MCP] disconnected from the server");
+}
 }
 
-// 工具回调函数 - 控制LED
+// Tool callback function - control the LED
 ToolResponse ledControl(const String& params) {
-  // 解析参数
-  ToolParams toolParams(params);
-  if (!toolParams.isValid()) {
-    return ToolResponse(true, "无效的参数");
-  }
-
-  // 获取LED状态参数
-  String state = toolParams.getString("state");
-  if (state.isEmpty()) {
-    return ToolResponse(true, "缺少state参数");
-  }
-
-  // 控制LED
-  if (state == "on") {
-    digitalWrite(LED_BUILTIN, HIGH);
-    return ToolResponse(false, "LED已打开");
-  } else if (state == "off") {
-    digitalWrite(LED_BUILTIN, LOW);
-    return ToolResponse(false, "LED已关闭");
-  } else {
-    return ToolResponse(true, "无效的state值，只能是'on'或'off'");
-  }
+// Parse parameters
+ToolParams toolParams(params);
+if (!toolParams.isValid()) {
+return ToolResponse(true, "Invalid parameter");
 }
 
-// 注册MCP工具
-void registerMcpTools() {
-  // 注册LED控制工具
-  mcpClient.registerTool(
-    "led_control",
-    "控制ESP32板载LED",
-    "{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\",\"description\":\"LED状态: on/off\"}},\"required\":[\"state\"]}",
-    ledControl
-  );
+// Get LED state parameter
+String state = toolParams.getString("state");
+if (state.isEmpty()) {
+return ToolResponse(true, "Missing state parameter");
+}
 
-  // 注册一个简单工具（简化版）
-  mcpClient.registerSimpleTool(
-    "say_hello",
-    "向指定名称的人问好",
-    "name",
-    "要问候的人的名字",
-    "string",
-    [](const String& params) {
-      ToolParams p(params);
-      String name = p.getString("name");
-      return ToolResponse(false, "你好, " + name + "!");
-    }
-  );
+// Control LED
+if (state == "on") {
+digitalWrite(LED_BUILTIN, HIGH);
+return ToolResponse(false, "LED is on");
+} else if (state == "off") {
+digitalWrite(LED_BUILTIN, LOW);
+return ToolResponse(false, "LED is off");
+} else {
+return ToolResponse(true, "Invalid state value, can only be 'on' or 'off'");
+}
+}
+
+// Register MCP tool
+void registerMcpTools() {
+// Register LED control tool
+mcpClient.registerTool(
+"led_control",
+"Control ESP32 onboard LED",
+"{\"type\":\"object\",\"properties\":{\"state\":{\"type\":\"string\",\"description\":\"LED state: on/off\"}},\"required\":[\"state\"]}",
+ledControl
+);
+
+// Register a simple tool (simplified version)
+mcpClient.registerSimpleTool(
+"say_hello",
+"Say hello to the person with the specified name",
+"name",
+"Name of the person to greet",
+"string",
+[](const String& params) {
+ToolParams p(params);
+String name = p.getString("name");
+return ToolResponse(false, "Hello, " + name + "!");
+}
+);
 }
 
 void setup() {
-  Serial.begin(115200);
+Serial.begin(115200);
 
-  // 初始化LED引脚
-  pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(LED_BUILTIN, LOW);
+// Initialize the LED pin
+pinMode(LED_BUILTIN, OUTPUT);
+digitalWrite(LED_BUILTIN, LOW);
 
-  // 连接WiFi
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("WiFi连接成功");
+// Connect to WiFi
+WiFi.begin(ssid, password);
+while (WiFi.status() != WL_CONNECTED) {
+delay(500);
+Serial.print(".");
+}
+Serial.println("WiFi connected successfully");
 
-  // 初始化MCP客户端
-  if (mcpClient.begin(mcpEndpoint, onConnectionStatus)) {
-    Serial.println("MCP客户端初始化成功");
-  } else {
-    Serial.println("MCP客户端初始化失败");
-  }
+// Initialize MCP client
+if (mcpClient.begin(mcpEndpoint, onConnectionStatus)) {
+Serial.println("MCP client initialization successful");
+} else {
+Serial.println("MCP client initialization failed");
+}
 }
 
 void loop() {
-  // 处理MCP客户端事件
-  mcpClient.loop();
-  delay(10);
+// Handle MCP client events
+mcpClient.loop();
+delay(10);
 }
 ```
 
-## 使用说明
+## Instructions
 
-### 1. 连接到MCP服务器
+### 1. Connect to the MCP server
 
-1. 配置WiFi网络信息
-2. 设置MCP服务器端点URL
-3. 创建`WebSocketMCP`实例
-4. 调用`begin()`方法初始化并连接到服务器
-5. 在`loop()`函数中调用`mcpClient.loop()`处理事件
+1. Configure WiFi network information
 
-### 2. 注册工具
+2. Set the MCP server endpoint URL
 
-工具是设备提供给MCP服务器的功能接口，可以通过以下两种方式注册：
+3. Create a `WebSocketMCP` instance
 
-#### 方法1：完整注册（带详细参数定义）
+4. Call the `begin()` method to initialize and connect to the server.
+5. Call `mcpClient.loop()` in the `loop()` function to handle events.
+
+### 2. Registering a Tool
+
+A tool is a functional interface provided by the device to the MCP server. It can be registered in two ways:
+
+#### Method 1: Complete Registration (with Detailed Parameter Definitions)
 ```cpp
 mcpClient.registerTool(
-  "tool_name",
-  "工具描述",
-  "{\"type\":\"object\",\"properties\":{\"param1\":{\"type\":\"string\"}},\"required\":[\"param1\"]}",
-  toolCallback
+"tool_name",
+"Tool Description",
+"{\"type\":\"object\",\"properties\":{\"param1\":{\"type\":\"string\"}},\"required\":[\"param1\"]}",
+toolCallback
 );
 ```
 
-#### 方法2：简化注册（适用于单参数工具）
+#### Method 2: Simplified Registration (for single-parameter tools)
 ```cpp
 mcpClient.registerSimpleTool(
-  "tool_name",
-  "工具描述",
-  "param_name",
-  "参数描述",
-  "param_type",
-  toolCallback
+"tool_name",
+"Tool Description",
+"param_name",
+"Parameter Description",
+"param_type",
+
+toolCallback
 );
 ```
 
-### 3. 工具回调函数
+### 3. Tool Callback Function
 
-工具回调函数接收参数并返回响应：
+The tool callback function receives parameters and returns a response:
 ```cpp
 ToolResponse toolCallback(const String& params) {
-  // 解析参数
-  ToolParams toolParams(params);
-  if (!toolParams.isValid()) {
-    return ToolResponse(true, "无效的参数");
-  }
+// Parse parameters
+ToolParams toolParams(params);
+if (!toolParams.isValid()) {
+return ToolResponse(true, "Invalid parameters");
+}
 
-  // 处理业务逻辑
-  // ...
+// Process business logic
+// ...
 
-  // 返回结果
-  return ToolResponse(false, "操作成功");
+// Return result
+return ToolResponse(false, "Operation successful");
 }
 ```
 
-### 4. 与小智AI音箱交互
+### 4. Interacting with the Xiaozhi AI Speaker
 
-1. 确保设备已成功连接到MCP服务器
-2. 在小智AI音箱上唤醒并说出指令，例如："小智，让我的ESP32打开LED"
-3. 音箱会将指令发送到MCP服务器
-4. 服务器会调用设备上注册的相应工具
-5. 设备执行工具并返回结果
-6. 音箱会播报执行结果
+1. Ensure the device is successfully connected to the MCP server.
+2. Wake up the Xiaozhi AI Speaker and speak a command, for example: "Xiaozhi, turn on the LED on my ESP32."
+3. The speaker sends the command to the MCP server.
+4. The server calls the corresponding tool registered on the device.
+5. The device executes the tool and returns the result.
+6. The speaker announces the execution result.
 
-### 5. 调试技巧
+### 5. Debugging Tips
 
-1. 使用`Serial.println()`输出调试信息
-2. 检查WiFi连接是否正常
-3. 确认MCP服务器地址和端口是否正确
-4. 查看串口输出的错误信息
-5. 确保工具注册代码在连接成功后调用
+1. Use `Serial.println()` to output debugging information
+2. Check if the WiFi connection is working properly
+3. Confirm that the MCP server address and port are correct
+4. Check the serial port output for error messages
+5. Ensure that the tool registration code is called after a successful connection
 
-## API参考
+## API Reference
 
-### WebSocketMCP类
+### WebSocketMCP Class
 
-#### 构造函数
+#### Constructor
 ```cpp
 WebSocketMCP();
 ```
 
-#### 初始化方法
+#### Initialization Method
 ```cpp
 bool begin(const char *mcpEndpoint, ConnectionCallback connCb = nullptr);
 ```
-- `mcpEndpoint`: WebSocket服务器地址(ws://host:port/path)
-- `connCb`: 连接状态变化回调函数
-- 返回值: 初始化是否成功
+- `mcpEndpoint`: WebSocket server address (ws://host:port/path)
+- `connCb`: Connection status change callback function
+- Return value: Initialization success
 
-#### 发送消息
+#### Sending a Message
 ```cpp
 bool sendMessage(const String &message);
 ```
-- `message`: 要发送的JSON字符串
-- 返回值: 发送是否成功
+- `message`: The JSON string to send
+- Return value: Whether the send was successful
 
-#### 工具注册
+#### Tool Registration
 ```cpp
 bool registerTool(const String &name, const String &description, const String &inputSchema, ToolCallback callback);
 bool registerSimpleTool(const String &name, const String &description, const String &paramName, const String &paramDesc, const String &paramType, ToolCallback callback);
 ```
-- `name`: 工具名称
-- `description`: 工具描述
-- `inputSchema`: JSON格式的输入参数定义
-- `callback`: 工具回调函数
-- 返回值: 注册是否成功
+- `name`: Tool name
+- `description`: Tool description
+- `inputSchema`: Input parameter definition in JSON format
+- `callback`: Tool callback function
+- Return value: Whether the registration was successful
 
-#### 工具管理
+#### Tool Management
 ```cpp
 bool unregisterTool(const String &name);
 void clearTools();
 size_t getToolCount();
 ```
 
-#### 连接状态
+#### Connection Status
 ```cpp
 bool isConnected();
 void disconnect();
 ```
 
-### ToolResponse类
+### ToolResponse Class
 
-用于创建工具调用响应：
+Used to create a tool call response:
 ```cpp
-// 创建文本响应
+// Create a text response
 ToolResponse(bool isError, const String& message);
 
-// 创建JSON响应
+// Create a JSON response
 ToolResponse(const String& json, bool isError = false);
 
-// 从JSON对象创建响应
+// Create a response from a JSON object
 static ToolResponse fromJson(const JsonObject& json, bool error = false);
 ```
 
-### ToolParams类
+### ToolParams Class
 
-用于解析工具参数：
+Used to parse tool parameters:
 ```cpp
 ToolParams(const String& json);
 bool isValid() const;
@@ -280,28 +284,31 @@ bool getBool(const String& key, bool defaultValue = false) const;
 float getFloat(const String& key, float defaultValue = 0.0f) const;
 ```
 
-## 示例
+## Examples
 
-- **BasicExample**: 基本连接和工具注册示例
-- **SmartSwitchExample**: 智能开关控制示例
+- **BasicExample**: Basic connection and tool registration example
+- **SmartSwitchExample**: Smart switch control example
 
-## 相关项目
-如果您需要更完整的智能家居解决方案，推荐关注 ha-esp32 项目
-- 在ESP32中实现HomeAssistant，对接小米、小度、涂鸦、天猫精灵等平台
-- 提供MCP接口，支持大模型调用，统一控制家庭设备
-- 项目地址：https://gitee.com/panzuji/ha-esp32
+## Related Projects
+If you need a more complete smart home solution, we recommend the ha-esp32 project.
+- Implements HomeAssistant on the ESP32, integrating with platforms such as Xiaomi, Xiaodu, Tuya, and Tmall Genie.
+- Provides an MCP interface, supports large-scale model calls, and enables unified control of home devices.
+- Project Address: https://gitee.com/panzuji/ha-esp32
 
-## 版本历史
-- v1.0.0: 初始版本，支持基本的WebSocket连接和工具注册功能
+## Version History
+- v1.0.0: Initial version, supporting basic WebSocket connections and tool registration.
 
-## 许可证
-xiaozhi-mcp 库采用 GNU 通用公共许可证 v3.0 (GPLv3) 授权。
+## License
+The xiaozhi-mcp library is licensed under the GNU General Public License v3.0 (GPLv3).
 
-GPLv3 是一种 copyleft 开源软件许可证，允许您自由地使用、复制、修改、合并、发布和分发软件，但有以下条件：
-1. 任何修改后的作品也必须使用 GPLv3 许可证发布
-2. 必须保留原始版权和许可证声明
-3. 如果您分发二进制形式的软件，必须同时提供对应的源代码
+GPLv3 is a copyleft open source software license that allows you to freely use, copy, modify, merge, publish, and distribute the software, subject to the following conditions:
 
-本软件按"原样"提供，不提供任何明示或暗示的担保，包括但不限于适销性、特定用途适用性和非侵权性的担保。在任何情况下，作者或版权持有人均不对任何索赔、损害或其他责任负责，无论是在合同诉讼、侵权诉讼或其他诉讼中，这些责任可能因软件或软件的使用或其他交易而产生。
+1. Any modified works must also be released under GPLv3.
 
-有关 GPLv3 的完整文本，请访问 https://www.gnu.org/licenses/gpl-3.0.html
+2. The original copyright and license notices must be retained.
+
+3. If you distribute the software in binary form, you must also provide the corresponding source code.
+
+THIS SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, ARISING OUT OF OR IN ANY WAY CONNECTED WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+For the full text of GPLv3, visit https://www.gnu.org/licenses/gpl-3.0.html

@@ -1,53 +1,53 @@
 #include <WiFi.h>
 #include <WebSocketMCP.h>
 
-// WiFi配置
+// WiFi configuration
 const char* ssid = "your-ssid";
 const char* password = "your-password";
 
-// MCP服务器配置
+// MCP server configuration
 const char* mcpEndpoint = "ws://your-mcp-server:port/path";
 
-// 创建WebSocketMCP实例
+// Create a WebSocketMCP instance
 WebSocketMCP mcpClient;
 
-// 智能开关引脚定义
-const int SWITCH_PINS[] = {1, 2, 3, 4, 5, 6};  // 开关输入引脚
-const int RELAY_PINS[] = {21, 45, 46, 38, 39, 40};  // 继电器输出引脚
-bool relayStates[6] = {false, false, false, false, false, false};  // 继电器状态
-unsigned long lastDebounceTime[6] = {0};  // 上次防抖动时间
-const unsigned long debounceDelay = 50;  // 防抖动延迟(毫秒)
+// Smart switch pin definition
+const int SWITCH_PINS[] = {1, 2, 3, 4, 5, 6};  // Switch input pins
+const int RELAY_PINS[] = {21, 45, 46, 38, 39, 40};  // Relay output pin
+bool relayStates[6] = {false, false, false, false, false, false};  // Relay status
+unsigned long lastDebounceTime[6] = {0};  // Last anti-shake time
+const unsigned long debounceDelay = 50;  // Anti-shake delay (milliseconds)
 
-// 连接状态回调函数
+// Connection status callback function
 void onConnectionStatus(bool connected) {
   if (connected) {
-    Serial.println("[MCP] 已连接到服务器");
-    // 连接成功后注册工具
+    Serial.println("[MCP] Connected to the server");
+    // Register tool after successful connection
     registerMcpTools();
   } else {
-    Serial.println("[MCP] 与服务器断开连接");
+    Serial.println("[MCP] Disconnect from the server");
   }
 }
 
-// 继电器控制函数
+// Relay control function
 void controlRelay(int relayIndex, bool state) {
   if (relayIndex >= 0 && relayIndex < 6) {
     relayStates[relayIndex] = state;
     digitalWrite(RELAY_PINS[relayIndex], state ? HIGH : LOW);
-    Serial.printf("[继电器] 控制继电器%d: %s\n", relayIndex + 1, state ? "开" : "关");
+    Serial.printf("[Relay] Control relay %d: %s\n", relayIndex + 1, state ? "open" : "close");
   }
 }
 
-// 检查开关状态
+// Check switch status
 void checkSwitches() {
   for (int i = 0; i < 6; i++) {
     int switchState = digitalRead(SWITCH_PINS[i]);
     unsigned long currentTime = millis();
 
-    // 防抖动处理
+    // Anti-shake treatment
     if (switchState != relayStates[i] && (currentTime - lastDebounceTime[i] > debounceDelay)) {
       lastDebounceTime[i] = currentTime;
-      // 开关是低电平有效
+      // The switch is active low
       if (switchState == LOW) {
         controlRelay(i, !relayStates[i]);
       }
@@ -55,34 +55,34 @@ void checkSwitches() {
   }
 }
 
-// 注册MCP工具
+// Register MCP Tools
 void registerMcpTools() {
-  // 注册继电器控制工具
+  // Register Relay Control Tool
   mcpClient.registerTool(
     "relay_control",
-    "控制六路继电器",
+    "Control six-channel relay",
     "{\"type\":\"object\",\"properties\":{\"relayIndex\":{\"type\":\"integer\",\"minimum\":1,\"maximum\":6},\"state\":{\"type\":\"boolean\"}},\"required\":[\"relayIndex\",\"state\"]}",
     [](const String& args) {
       DynamicJsonDocument doc(256);
       deserializeJson(doc, args);
       
-      int relayIndex = doc["relayIndex"].as<int>() - 1;  // 转换为0-based索引
+      int relayIndex = doc["relayIndex"].as<int>() - 1;  // Convert to 0-based index
       bool state = doc["state"].as<bool>();
       
       if (relayIndex >= 0 && relayIndex < 6) {
         controlRelay(relayIndex, state);
         return WebSocketMCP::ToolResponse("{\"success\":true,\"relayIndex\":" + String(relayIndex + 1) + ",\"state\":" + (state ? "true" : "false") + "}");
       } else {
-        return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"无效的继电器索引\"}", true);
+        return WebSocketMCP::ToolResponse("{\"success\":false,\"error\":\"Invalid relay index\"}", true);
       }
     }
   );
-  Serial.println("[MCP] 继电器控制工具已注册");
+  Serial.println("[MCP] Relay Control Tool Registered")l Tool Registered");
 
-  // 注册继电器状态查询工具
+  // Register relay status query tool
   mcpClient.registerTool(
     "relay_status",
-    "查询六路继电器状态",
+    "Query the status of six relays",
     "{\"type\":\"object\",\"properties\":{}}",
     [](const String& args) {
       String result = "{\"success\":true,\"relays\":[";
@@ -94,26 +94,26 @@ void registerMcpTools() {
       return WebSocketMCP::ToolResponse(result);
     }
   );
-  Serial.println("[MCP] 继电器状态查询工具已注册");
+  Serial.println("[MCP] Relay status query tool registered");
 }
 
 void setup() {
   Serial.begin(115200);
 
-  // 初始化开关引脚(输入上拉)
+  // Initialize switch pin (input pull-up)
   for (int i = 0; i < 6; i++) {
     pinMode(SWITCH_PINS[i], INPUT_PULLUP);
   }
 
-  // 初始化继电器引脚(输出，初始关闭)
+  // Initialize relay pin (output, initial shutdown)
   for (int i = 0; i < 6; i++) {
     pinMode(RELAY_PINS[i], OUTPUT);
     digitalWrite(RELAY_PINS[i], LOW);
     relayStates[i] = false;
   }
 
-  // 连接WiFi
-  Serial.print("连接到WiFi: ");
+  // Connect to WiFi
+  Serial.print("Connect to WiFi:");
   Serial.println(ssid);
   WiFi.begin(ssid, password);
   
@@ -122,18 +122,18 @@ void setup() {
     Serial.print(".");
   }
   
-  Serial.println("WiFi已连接");
-  Serial.println("IP地址: " + WiFi.localIP().toString());
+  Serial.println("WiFi is connected");
+  Serial.println("IP address:" + WiFi.localIP().toString());
 
-  // 初始化MCP客户端
+  // Initialize the MCP client
   mcpClient.begin(mcpEndpoint, onConnectionStatus);
 }
 
 void loop() {
-  // 处理MCP客户端事件
+  // Handle MCP client events
   mcpClient.loop();
   
-  // 检查开关状态
+  // Check switch status
   checkSwitches();
   
   delay(10);

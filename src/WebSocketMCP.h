@@ -6,40 +6,39 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebSocketsClient.h>
-#include <ArduinoJson.h>  // 需要添加这个库来解析JSON
+#include <ArduinoJson.h>  // This library needs to be added to parse JSON
 #include <vector>
 #include <functional>
 
-/**
- * WebSocketMCP类
- * 封装了与MCP服务器的WebSocket连接及其通信
- */
+/* *
+ * WebSocketMCP Class
+ * Encapsulates WebSocket connection and communication with MCP server */
 class WebSocketMCP {
 public:
-  // 定义工具响应内容结构
+  // Define the tool response content structure
   //Sending to WebSocket: {"jsonrpc":"2.0","id":48,"result":{"content":[{"type":"text","text":"{\n  \"success\": true,\n  \"result\": 2\n}"}],"isError":false}}
   struct ToolContentItem {
-    String type;  // 内容类型，如"text"
-    String text;  // 文本内容
+    String type;  // Content type, such as "text"
+    String text;  // Text content
   };
   
-  // 定义工具响应结构
+  // Define tool response structure
   struct ToolResponse {
-    std::vector<ToolContentItem> content;  // 响应内容数组
-    bool isError;                          // 是否为错误响应
+    std::vector<ToolContentItem> content;  // Response content array
+    bool isError;                          // Is it an error response
     
-    // 构造函数：从单个文本内容创建响应
+    // Constructor: Create a response from a single text content
     ToolResponse(const String& textContent, bool error = false) {
       ToolContentItem item;
       item.type = "text";
       
-      // 尝试检测是否为JSON并格式化（通过查找开头的 { 和结尾的 }）
+      // Try to detect if it is JSON and format it (by finding the beginning { and ending })
       String trimmedText = textContent;
       trimmedText.trim();
       
       if (trimmedText.startsWith("{") && trimmedText.endsWith("}")) {
-        // 使用WebSocketMCP的formatJsonString方法格式化
-        // 由于这是一个静态方法内，我们需要创建一个临时实例来调用非静态方法
+        // FormatJsonString method using WebSocketMCP
+        // Since this is within a static method, we need to create a temporary instance to call a non-static method
         WebSocketMCP* instance = WebSocketMCP::instance;
         if (instance) {
           item.text = instance->formatJsonString(textContent);
@@ -54,7 +53,7 @@ public:
       isError = error;
     }
 
-    // 新增构造函数：用于处理 bool 和 String 类型的参数
+    // New constructor: used to handle parameters of bool and String types
     ToolResponse(bool error, const String& message) {
       ToolContentItem item;
       item.type = "text";
@@ -63,10 +62,10 @@ public:
       isError = error;
     }
     
-    // 默认构造函数
+    // Default constructor
     ToolResponse() : isError(false) {}
     
-    // 从JSON对象创建响应（便捷方法）
+    // Create a response from a JSON object (convenient method)
     static ToolResponse fromJson(const JsonObject& json, bool error = false) {
       String jsonStr;
       serializeJson(json, jsonStr);
@@ -74,7 +73,7 @@ public:
     }
   };
 
-  // 用于参数处理的辅助类
+  // Auxiliary class for parameter processing
   class ToolParams {
   public:
     ToolParams(const String& json) {
@@ -176,68 +175,62 @@ public:
     bool valid = false;
   };
 
-  // 重新定义工具回调函数类型 - 接收JSON字符串参数，返回ToolResponse结构
-  typedef std::function<ToolResponse(const String&)> ToolCallback; // 更改为接收 ToolParams&
+  // Redefine the tool callback function type - receive JSON string parameters and return the ToolResponse structure
+  typedef std::function<ToolResponse(const String&)> ToolCallback; // Change to Receive ToolParams&
 
-  // 回调类型定义
-  // 输出回调：void(const String&)
+  // Callback type definition
+  // Output callback: void(const String&)
   typedef void (*OutputCallback)(const String&);
-  // 错误回调：void(const String&)
+  // Error callback: void(const String&)
   typedef void (*ErrorCallback)(const String&);
-  // 连接状态回调：void(bool)
+  // Connection status callback: void(bool)
   typedef void (*ConnectionCallback)(bool);
 
   WebSocketMCP();
 
-  /**
-   * 初始化WebSocket连接
-   * @param mcpEndpoint WebSocket服务器地址(ws://host:port/path)
-   * @param outputCb 输出数据回调函数(相当于stdout)
-   * @param errorCb 错误消息回调函数(相当于stderr)
-   * @param connCb 连接状态变化回调函数
-   * @return 初始化是否成功
-   * 
-   * 注意：连接会使用以下超时设置：
-   * - PING_INTERVAL: 心跳ping间隔，默认为45秒
-   * - DISCONNECT_TIMEOUT: 断开连接超时，默认为60秒
-   * - INITIAL_BACKOFF: 初始重连等待时间，默认为1秒
-   * - MAX_BACKOFF: 最大重连等待时间，默认为60秒
-   */
+  /* *
+   * Initialize the WebSocket connection
+   * @param mcpEndpoint WebSocket server address (ws://host:port/path)
+   * @param outputCb output data callback function (equivalent to stdout)
+   * @param errorCb error message callback function (equivalent to stderr)
+   * @param connCb Connection state change callback function
+   * @return Whether the initialization is successful
+   *
+   * Note: The connection uses the following timeout settings:
+   * - PING_INTERVAL: Heartbeat ping interval, default is 45 seconds
+   * - DISCONNECT_TIMEOUT: Disconnect timeout, default is 60 seconds
+   * - INITIAL_BACKOFF: The initial reconnection wait time is 1 second by default
+   * - MAX_BACKOFF: Maximum reconnection waiting time, default is 60 seconds */
   bool begin(const char *mcpEndpoint, ConnectionCallback connCb = nullptr);
 
-  /**
-   * 发送数据到WebSocket服务器(相当于stdin)
-   * @param message 要发送的消息
-   * @return 发送是否成功
-   */
+  /* *
+   * Send data to the WebSocket server (equivalent to stdin)
+   * @param message message to send
+   * @return Whether the sending is successful */
   bool sendMessage(const String &message);
 
-  /**
-   * 处理WebSocket事件和保持连接
-   * 需要在主循环中频繁调用
-   */
+  /* *
+   * Handle WebSocket events and keep connections
+   * Need to be called frequently in the main loop */
   void loop();
 
-  /**
-   * 是否已连接到服务器
-   * @return 连接状态
-   */
+  /* *
+   * Whether it is connected to the server
+   * @return Connection status */
   bool isConnected();
 
-  /**
-   * 断开连接
-   */
+  /* *
+   * Disconnect */
   void disconnect();
 
-  /**
-   * 设置日志级别和回调函数
-   * @param level 日志级别
-   * @param logCb 日志回调函数
-   */
+  /* *
+   * Set log level and callback function
+   * @param level Log level
+   * @param logCb log callback function */
 
-  // 工具注册和管理方法
+  // Tool registration and management methods
   bool registerTool(const String &name, const String &description, const String &inputSchema, ToolCallback callback);
-  // 简化工具注册API
+  // Simplify tool registration API
   bool registerSimpleTool(const String &name, const String &description, 
                          const String &paramName, const String &paramDesc, 
                          const String &paramType, ToolCallback callback);
@@ -253,41 +246,41 @@ private:
   bool connected;
   unsigned long lastReconnectAttempt;
 
-  // 重连设置
-  static const int INITIAL_BACKOFF = 1000; // 初始等待时间(毫秒)
-  static const int MAX_BACKOFF = 60000;    // 最大等待时间(毫秒)
-  static const int PING_INTERVAL = 10000;  // ping发送间隔(毫秒)
-  static const int DISCONNECT_TIMEOUT = 60000; // 断开连接超时(毫秒)
+  // Reconnect settings
+  static const int INITIAL_BACKOFF = 1000; // Initial waiting time (milliseconds)
+  static const int MAX_BACKOFF = 60000;    // Maximum waiting time (milliseconds)
+  static const int PING_INTERVAL = 10000;  // ping sending interval (milliseconds)
+  static const int DISCONNECT_TIMEOUT = 60000; // Disconnect timeout (milliseconds)
   int currentBackoff;
   int reconnectAttempt;
 
-  // WebSocket事件处理函数
+  // WebSocket event handling function
   static void webSocketEvent(WStype_t type, uint8_t *payload, size_t length);
   static WebSocketMCP *instance;
 
-  // 重连处理
+  // Reconnect processing
   void handleReconnect();
   void resetReconnectParams();
 
-  // 新增成员
+  // New members
   unsigned long lastPingTime = 0;
   void handleJsonRpcMessage(const String &message);
 
-  // 工具结构定义
+  // Tool structure definition
   struct Tool {
-    String name;           // 工具名称
-    String description;    // 工具描述 
-    String inputSchema;    // 工具输入schema(JSON格式)
-    ToolCallback callback; // 工具调用回调函数
+    String name;           // Tool name
+    String description;    // Tool Description
+    String inputSchema;    // Tool input schema (JSON format)
+    ToolCallback callback; // Tool calls callback functions
   };
 
-  // 工具列表
+  // Tool list
   std::vector<Tool> _tools;
 
-  // 辅助方法
+  // Auxiliary methods
   String escapeJsonString(const String &input);
   
-  // 格式化JSON字符串，每个键值对占一行
+  // Format JSON strings, each key-value pair takes up one line
   String formatJsonString(const String &jsonStr);
 };
 

@@ -1,10 +1,10 @@
 
 #include "WebSocketMCP.h"
 
-// 静态实例指针初始化
+// Static instance pointer initialization
 WebSocketMCP* WebSocketMCP::instance = nullptr;
 
-// 静态常量定义
+// Static constant definition
 const int WebSocketMCP::INITIAL_BACKOFF;
 const int WebSocketMCP::MAX_BACKOFF;
 const int WebSocketMCP::PING_INTERVAL;
@@ -12,16 +12,16 @@ const int WebSocketMCP::DISCONNECT_TIMEOUT;
 
 WebSocketMCP::WebSocketMCP() : connected(false), lastReconnectAttempt(0), 
                               currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0) {
-  // 设置静态实例指针
+  // Setting static instance pointer
   instance = this;
   connectionCallback = nullptr;
 }
 
 bool WebSocketMCP::begin(const char *mcpEndpoint,  ConnectionCallback connCb) {
-  // 保存回调函数
+  // Save the callback function
   connectionCallback = connCb;
   
-  // 解析WebSocket URL
+  // Parse WebSocket URLs
   String url = String(mcpEndpoint);
   int protocolPos = url.indexOf("://");
   String protocol = url.substring(0, protocolPos);
@@ -40,13 +40,13 @@ bool WebSocketMCP::begin(const char *mcpEndpoint,  ConnectionCallback connCb) {
     host = remaining;
   }
   
-  // 检查端口
+  // Check port
   int portPos = host.indexOf(':');
   if (portPos >= 0) {
     port = host.substring(portPos + 1).toInt();
     host = host.substring(0, portPos);
   } else {
-    // 根据协议设置默认端口
+    // Set the default port according to the protocol
     if (protocol == "ws") {
       port = 80;
     } else if (protocol == "wss") {
@@ -54,26 +54,26 @@ bool WebSocketMCP::begin(const char *mcpEndpoint,  ConnectionCallback connCb) {
     }
   }
   
-  // 配置WebSocket客户端
+  // Configuring the WebSocket Client
   if (protocol == "wss") {
     webSocket.beginSSL(host.c_str(), port, path.c_str());
   } else {
     webSocket.begin(host.c_str(), port, path.c_str());
   }
   
-  // 设置断开连接超时为60秒
+  // Set the disconnect timeout to 60 seconds
   // webSocket.setReconnectInterval(DISCONNECT_TIMEOUT);
   webSocket.enableHeartbeat(PING_INTERVAL, PING_INTERVAL, DISCONNECT_TIMEOUT);
   
-  // 注册事件回调
+  // Register event callback
   webSocket.onEvent(webSocketEvent);
   
-  Serial.println("[xiaozhi-mcp] 正在连接WebSocket服务器: " + url);
+  Serial.println("[xiaozhi-mcp] Connecting to the WebSocket server:" + url);
   return true;
 }
 
 void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length) {
-  // 确保实例存在
+  // Make sure the instance exists
   if (!instance) {
     return;
   }
@@ -82,7 +82,7 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
     case WStype_DISCONNECTED:
       if (instance->connected) {
         instance->connected = false;
-        Serial.println("[xiaozhi-mcp] WebSocket连接已断开");
+        Serial.println("[xiaozhi-mcp] WebSocket connection has been disconnected");
         if (instance->connectionCallback) {
           instance->connectionCallback(false);
         }
@@ -93,7 +93,7 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
       {
         instance->connected = true;
         instance->resetReconnectParams();
-        Serial.println("[xiaozhi-mcp] WebSocket已连接");
+        Serial.println("[xiaozhi-mcp] WebSocket is connected");
         if (instance->connectionCallback) {
           instance->connectionCallback(true);
         }
@@ -102,14 +102,14 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
       
     case WStype_TEXT:
       {
-        // 接收到WebSocket消息，处理JSON-RPC请求
+        // Receive WebSocket message and process JSON-RPC request
         String message = String((char *)payload);
         instance->handleJsonRpcMessage(message);
       }
       break;
       
     case WStype_BIN:
-      Serial.println("[xiaozhi-mcp] 收到二进制数据，长度: " + String(length));
+      Serial.println("[xiaozhi-mcp] Received binary data, length:" + String(length));
       break;
       
     case WStype_ERROR:
@@ -123,31 +123,31 @@ void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length
 
 bool WebSocketMCP::sendMessage(const String &message) {
   if (!connected) {
-    Serial.println("[xiaozhi-mcp] 未连接到WebSocket服务器，无法发送消息");
+    Serial.println("[xiaozhi-mcp] Not connected to WebSocket server, unable to send messages");
     return false;
   }
-  // 发送文本消息到WebSocket服务器(相当于stdin)
-  Serial.println("[xiaozhi-mcp] 发送消息: " + message);
+  // Send text messages to the WebSocket server (equivalent to stdin)
+  Serial.println("[xiaozhi-mcp] Send message:" + message);
   String msg = message;
   webSocket.sendTXT(msg);
   return true;
 }
 
 void WebSocketMCP::loop() {
-  // 处理WebSocket连接
+  // Handle WebSocket connections
   webSocket.loop();
   
-  // 检查是否需要重连
+  // Check if reconnection is required
   if (!connected) {
     handleReconnect();
   }
   
-  // 处理可能的ping超时
+  // Handle possible ping timeouts
   if (connected && lastPingTime > 0) {
     unsigned long now = millis();
-    // 如果超过2分钟没收到ping，可能连接已经断开
+    // If you do not receive ping for more than 2 minutes, the connection may have been disconnected
     if (now - lastPingTime > 120000) {
-      Serial.println("[xiaozhi-mcp] Ping超时，重置连接");
+      Serial.println("[xiaozhi-mcp] Ping timeout, reset connection");
       disconnect();
     }
   }
@@ -166,17 +166,17 @@ void WebSocketMCP::disconnect() {
 }
 
 void WebSocketMCP::handleReconnect() {
-  // WebSocket库已经有自动重连功能，这里主要是处理重连状态的日志和通知
+  // The WebSocket library already has an automatic reconnect function, which mainly deals with logs and notifications of reconnection status.
   unsigned long now = millis();
   if (!connected && (now - lastReconnectAttempt > currentBackoff || lastReconnectAttempt == 0)) {
     reconnectAttempt++;
     lastReconnectAttempt = now;
     
-    // 计算下一次重连的等待时间(指数退避)
+    // Calculate the waiting time for the next reconnect (exponent backoff)
     currentBackoff = min(currentBackoff * 2, MAX_BACKOFF);
     
-    Serial.println("[xiaozhi-mcp] 正在尝试重新连接(尝试次数: " + String(reconnectAttempt) + 
-        ", 下次等待时间: " + String(currentBackoff / 1000.0, 2) + "秒");
+    Serial.println("[xiaozhi-mcp] Trying to reconnect (number of attempts:" + String(reconnectAttempt) + 
+        ", Next time waiting time:" + String(currentBackoff / 1000.0, 2) + "Second");
   }
 }
 
@@ -186,55 +186,55 @@ void WebSocketMCP::resetReconnectParams() {
   lastReconnectAttempt = 0;
 }
 
-// 新增处理JSON-RPC消息的方法
+// Added a new method to process JSON-RPC messages
 void WebSocketMCP::handleJsonRpcMessage(const String &message) {
   DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, message);
   
   if (error) {
-    Serial.println("[xiaozhi-mcp] 解析JSON失败: " + String(error.c_str()));
+    Serial.println("[xiaozhi-mcp] Failed to parse JSON:" + String(error.c_str()));
     return;
   }
   
-  // 检查是否是ping请求
+  // Check if it is a ping request
   if (doc.containsKey("method") && doc["method"] == "ping") {
-    // 记录最后一次ping时间
+    // Record the last ping time
     lastPingTime = millis();
     
-    // 构造pong响应 - 使用原始id进行回应，不做修改
+    // Construct pong response - Response with original id without modification
     String id = doc["id"].as<String>();
-    Serial.println("[xiaozhi-mcp] 收到ping请求: " + id);
+    Serial.println("[xiaozhi-mcp] Received a ping request:" + id);
 
     String response = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{}}";
     sendMessage(response);
 
-    Serial.println("[xiaozhi-mcp] 响应ping请求: " + id);
+    Serial.println("[xiaozhi-mcp] Respond to ping request:" + id);
   }
-  // 处理初始化请求
+  // Process initialization request
   else if (doc.containsKey("method") && doc["method"] == "initialize") {
     String id = doc["id"].as<String>();
     
     String serverName = "ESP-HA"; 
 
-    // 发送初始化响应
+    // Send initialization response
     String response = "{\"jsonrpc\":\"2.0\",\"id\":" + id + 
       ",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"experimental\":{},\"prompts\":{\"listChanged\":false},\"resources\":{\"subscribe\":false,\"listChanged\":false},\"tools\":{\"listChanged\":false}},\"serverInfo\":{\"name\":\"" + serverName + "\",\"version\":\"1.0.0\"}}}";
     
     sendMessage(response);
-    Serial.println("[xiaozhi-mcp] 响应initialize请求");
+    Serial.println("[xiaozhi-mcp] Respond to initialize request")alize request");
     
-    // 发送initialized通知
+    // Send initialized notifications
     sendMessage("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
   }
-  // 处理tools/list请求
+  // Process tools/list requests
   else if (doc.containsKey("method") && doc["method"] == "tools/list") {
     String id = doc["id"].as<String>();
     
-    // 这里可以根据实际情况定制工具列表
+    // Here you can customize the tool list according to actual conditions
     String response = "{\"jsonrpc\":\"2.0\",\"id\":" + id + 
       ",\"result\":{\"tools\":[";
     
-    // 从已注册工具列表生成工具信息
+    // Generate tool information from the registered tool list
     if (_tools.size() > 0) {
       for (size_t i = 0; i < _tools.size(); i++) {
         if (i > 0) {
@@ -249,29 +249,29 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
     response += "]}}";
     
     sendMessage(response);
-    Serial.println("[xiaozhi-mcp] 响应tools/list请求，共" + String(_tools.size()) + "个工具");
+    Serial.println("[xiaozhi-mcp] Respond to tools/list request, total" + String(_tools.size()) + "A tool");
   }
-  // 处理tools/call请求
+  // Process tools/call requests
   else if (doc.containsKey("method") && doc["method"] == "tools/call") {
     int id = doc["id"].as<int>();
     String toolName = doc["params"]["name"].as<String>();
     JsonObject arguments = doc["params"]["arguments"].as<JsonObject>();
     
-    Serial.println("[xiaozhi-mcp] 收到工具调用请求: " + toolName);
+    Serial.println("[xiaozhi-mcp] Received a tool call request:" + toolName);
     
-    // 查找工具
+    // Find Tools
     bool toolFound = false;
     ToolResponse toolResponse;
     
     for (size_t i = 0; i < _tools.size(); i++) {
       if (_tools[i].name == toolName) {
         toolFound = true;
-        // 调用工具回调，传入参数并获取结果
+        // Call the tool callback, pass in parameters and get the result
         if (_tools[i].callback) {
           String argumentsJson;
           serializeJson(arguments, argumentsJson);
           
-          // 调用回调并获取结构化结果
+          // Calling the callback and getting structured results
           toolResponse = _tools[i].callback(argumentsJson);
         } else {
           toolResponse = ToolResponse("{\"error\":\"Tool callback not registered\"}", true);
@@ -284,7 +284,7 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
       toolResponse = ToolResponse("{\"error\":\"Tool not found: " + toolName + "\"}", true);
     }
     
-    // 构造响应
+    // Construct the response
     DynamicJsonDocument responseDoc(2048);
     responseDoc["jsonrpc"] = "2.0";
     responseDoc["id"] = id;
@@ -304,11 +304,11 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
     serializeJson(responseDoc, response);
     
     sendMessage(response);
-    Serial.println("[xiaozhi-mcp] 工具调用完成: " + toolName + (toolResponse.isError ? " (出错)" : ""));
+    Serial.println("[xiaozhi-mcp] Tool call complete:" + toolName + (toolResponse.isError ? "(Error)" : ""));
   }
 }
 
-// 转义JSON字符串中的特殊字符
+// Escape special characters in JSON strings
 String WebSocketMCP::escapeJsonString(const String &input) {
   String result = "";
   for (size_t i = 0; i < input.length(); i++) {
@@ -331,20 +331,20 @@ String WebSocketMCP::escapeJsonString(const String &input) {
   return result;
 }
 
-// 添加工具注册方法 - 带回调函数版
+// Add tool registration method - bring callback function version
 bool WebSocketMCP::registerTool(const String &name, const String &description, 
                               const String &inputSchema, ToolCallback callback) {
-  // 检查工具是否已存在
+  // Check if the tool already exists
   for (size_t i = 0; i < _tools.size(); i++) {
     if (_tools[i].name == name) {
-      // 如果工具存在，可以选择更新回调
+      // If the tool exists, you can choose to update the callback
       _tools[i].callback = callback;
-      Serial.println("[xiaozhi-mcp] 更新工具回调: " + name);
+      Serial.println("[xiaozhi-mcp] Update tool callback:" + name);
       return true;
     }
   }
   
-  // 创建新工具并添加到列表
+  // Create a new tool and add it to the list
   Tool newTool;
   newTool.name = name;
   newTool.description = description;
@@ -352,15 +352,15 @@ bool WebSocketMCP::registerTool(const String &name, const String &description,
   newTool.callback = callback;
   
   _tools.push_back(newTool);
-  Serial.println("[xiaozhi-mcp] 成功注册工具: " + name);
+  Serial.println("[xiaozhi-mcp] Successful registration tool:" + name);
   return true;
 }
 
-// 添加简化的工具注册方法
+// Add a simplified tool registration method
 bool WebSocketMCP::registerSimpleTool(const String &name, const String &description, 
                                     const String &paramName, const String &paramDesc, 
                                     const String &paramType, ToolCallback callback) {
-  // 构建简单的inputSchema
+  // Build a simple inputSchema
   String inputSchema = "{\"type\":\"object\",\"properties\":{\"" + 
                       paramName + "\":{\"type\":\"" + paramType + 
                       "\",\"description\":\"" + paramDesc + 
@@ -369,81 +369,81 @@ bool WebSocketMCP::registerSimpleTool(const String &name, const String &descript
   return registerTool(name, description, inputSchema, callback);
 }
 
-// 卸载工具
+// Uninstall tool
 bool WebSocketMCP::unregisterTool(const String &name) {
   for (size_t i = 0; i < _tools.size(); i++) {
     if (_tools[i].name == name) {
       _tools.erase(_tools.begin() + i);
-      Serial.println("[xiaozhi-mcp] 已卸载工具: " + name);
+      Serial.println("[xiaozhi-mcp] Uninstalled tool:" + name);
       return true;
     }
   }
-  Serial.println("[xiaozhi-mcp] 工具 " + name + " 不存在，无法卸载");
+  Serial.println("[xiaozhi-mcp] Tools" + name + "Does not exist, cannot be uninstalled");
   return false;
 }
 
-// 获取工具数量
+// Get the number of tools
 size_t WebSocketMCP::getToolCount() {
   return _tools.size();
 }
 
-// 清空所有工具
+// Clear all tools
 void WebSocketMCP::clearTools() {
   _tools.clear();
-  Serial.println("[WebSocketMCP] 已清空所有工具");
+  Serial.println("[WebSocketMCP] All tools have been cleared") have been cleared");
 }
 
-// 格式化JSON字符串，每个键值对占一行
+// Format JSON strings, each key-value pair takes up one line
 String WebSocketMCP::formatJsonString(const String &jsonStr) {
-  // 1. 处理空字符串或无效JSON
+  // 1. Handle empty strings or invalid JSON
   if (jsonStr.length() == 0) {
     return "{}";
   }
 
-  // 2. 尝试解析JSON以确保其有效
+  // 2. Try parsing JSON to make sure it works
   DynamicJsonDocument doc(1024);
   DeserializationError error = deserializeJson(doc, jsonStr);
   
   if (error) {
-    // 如果解析失败，返回原字符串
+    // If parsing fails, return to the original string
     return jsonStr;
   }
   
-  // 3. 初始化结果字符串
+  // 3. Initialize the result string
   String result = "{\n";
   
-  // 4. 获取JSON中的所有键
+  // 4. Get all keys in JSON
   JsonObject obj = doc.as<JsonObject>();
   bool firstItem = true;
   
-  // 5. 遍历JSON对象中的每个键值对
+  // 5. Iterate through each key-value pair in the JSON object
   for (JsonPair p : obj) {
     if (!firstItem) {
       result += ",\n";
     }
     firstItem = false;
     
-    // 添加两个空格的缩进
+    // Add two spaces indentation
     result += "  \"" + String(p.key().c_str()) + "\": ";
     
-    // 根据值的类型添加相应的表示
+    // Add corresponding representation according to the type of value
     if (p.value().is<JsonObject>() || p.value().is<JsonArray>()) {
-      // 如果值是对象或数组，使用serializeJson转换
+      // If the value is an object or an array, use serializeJson to convert
       String nestedJson;
       serializeJson(p.value(), nestedJson);
       result += nestedJson;
     } else if (p.value().is<const char*>() || p.value().is<String>()) {
-      // 如果是字符串，添加引号
+      // If it is a string, add quotation marks
       result += "\"" + String(p.value().as<const char*>()) + "\"";
     } else {
-      // 对于其他类型（数字、布尔值等）
+      // For other types (numbers, boolean values, etc.)
       String valueStr;
       serializeJson(p.value(), valueStr);
       result += valueStr;
     }
   }
   
-  // 6. 添加结束括号（换行并闭合）
+  // 6. Add end brackets (line wrap and close)
   result += "\n}";
   
   return result;
