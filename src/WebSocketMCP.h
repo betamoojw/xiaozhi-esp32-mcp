@@ -1,11 +1,10 @@
-
-
 #ifndef WEBSOCKET_MCP_H
 #define WEBSOCKET_MCP_H
 
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebSocketsClient.h>
+#include <WiFiClientSecure.h> // Needed to connect to wss with certificate
 #include <ArduinoJson.h>  // This library needs to be added to parse JSON
 #include <vector>
 #include <functional>
