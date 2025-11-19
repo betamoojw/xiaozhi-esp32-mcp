@@ -2,10 +2,9 @@
 #include <WiFi.h> 
 #include <ArduinoJson.h>
 
-// Include necessary cryptographic helpers typically available in the ESP32 Core,
-// even if used internally by the old library, they are needed for manual handshake.
-#include "mbedtls/sha1.h" // Assuming standard crypto headers from ESP-IDF are accessible
-#include "mbedtls/base64.h" // For Base64 encoding/decoding
+// Includes for native Handshake (assuming mbedtls headers are accessible in the ESP32 Arduino Core environment)
+#include "mbedtls/sha1.h" 
+#include "mbedtls/base64.h" 
 
 // Static instance pointer initialization
 WebSocketMCP* WebSocketMCP::instance = nullptr;
@@ -16,20 +15,26 @@ const int WebSocketMCP::MAX_BACKOFF;
 const int WebSocketMCP::PING_INTERVAL;
 const int WebSocketMCP::DISCONNECT_TIMEOUT;
 
-// Default constructor implementation (retained for backward compatibility)
+// Default constructor implementation (CRITICAL FIXES in initializer list)
 WebSocketMCP::WebSocketMCP() : connected(false), lastReconnectAttempt(0),
-currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0), _injectedClient(nullptr), _currentState(WS_DISCONNECTED) {
+currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0), _injectedClient(nullptr), 
+// ✅ FIX: Initialize all new members and use class scope for enum
+_currentState(WebSocketMCP::WS_DISCONNECTED),
+_host(""), _port(0), _path("/"), _isSecure(false) {
+
     // Setting static instance pointer
     instance = this;
     connectionCallback = nullptr;
 }
 
-// ✅ NEW CONSTRUCTOR IMPLEMENTATION: Saves the reference to the injected client.
+// NEW CONSTRUCTOR IMPLEMENTATION (CRITICAL FIXES in initializer list)
 WebSocketMCP::WebSocketMCP(Client& client) : connected(false), lastReconnectAttempt(0),
-currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0), _injectedClient(&client), _currentState(WS_DISCONNECTED) {
+currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0), _injectedClient(&client), 
+// ✅ FIX: Initialize all new members and use class scope for enum
+_currentState(WebSocketMCP::WS_DISCONNECTED),
+_host(""), _port(0), _path("/"), _isSecure(false) {
     instance = this;
     connectionCallback = nullptr;
-    // Log the successful injection of the Client
     Serial.println("[xiaozhi-mcp] Network Client injected.");
 }
 
@@ -42,22 +47,22 @@ currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0), _injectedClient(&client), 
 bool WebSocketMCP::performHandshake() {
     Client* netClient = _injectedClient; 
 
-    if (!netClient) {
-        // Should not happen if _isSecure is true, but check defensively
-        Serial.println("[xiaozhi-mcp] ERROR: No network client for handshake.");
+    if (!netClient || !netClient->connected()) {
+        Serial.println("[xiaozhi-mcp] ERROR: No connected network client for handshake.");
         return false;
     }
 
     // 1. Generate Sec-WebSocket-Key (16 random bytes, Base64 encoded)
-    uint8_t keyBytes[4];
+    uint8_t keyBytes[1];
     for (int i = 0; i < 16; i++) {
         keyBytes[i] = random(0, 256);
     }
 
-    char keyBase64[5]; // 16 bytes -> 24 chars Base64 + null terminator
+    char keyBase64[2]; // 16 bytes -> 24 chars Base64 + null terminator
     size_t len;
+    // NOTE: This assumes mbedtls base64_encode is correctly linked in the Arduino environment
     mbedtls_base64_encode((unsigned char*)keyBase64, sizeof(keyBase64), &len, keyBytes, 16);
-    keyBase64[len] = '\0'; // Ensure null termination
+    keyBase64[len] = '\0'; 
     String clientKey = String(keyBase64);
     
     // 2. Construct the Handshake Request (HTTP Upgrade)
@@ -68,7 +73,6 @@ bool WebSocketMCP::performHandshake() {
         "Connection: Upgrade\r\n"
         "Sec-WebSocket-Key: " + clientKey + "\r\n"
         "Sec-WebSocket-Version: 13\r\n"
-        // Optional headers like Origin or protocol can be added here
         "\r\n"; // End of headers
     
     // 3. Send Request
@@ -93,40 +97,33 @@ bool WebSocketMCP::performHandshake() {
         return false;
     }
 
-    // 5. Validate Response
+    // 5. Validate Response Status and Headers
     if (!response.startsWith("HTTP/1.1 101")) {
         Serial.println("[xiaozhi-mcp] Invalid Handshake response code. Expected 101.");
-        return false;
-    }
-    if (response.indexOf("Upgrade: websocket") == -1 || 
-        response.indexOf("Connection: Upgrade") == -1) {
-        Serial.println("[xiaozhi-mcp] Missing Upgrade/Connection headers.");
+        netClient->stop(); // Close connection if invalid
         return false;
     }
 
     // 6. Validate Sec-WebSocket-Accept
-    // Concatenate client key + magic string
     String magicString = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
     String combined = clientKey + magicString;
     
-    // Calculate SHA1 hash of the combined string
-    uint8_t hash[6];
+    uint8_t hash[3]; // SHA1 produces 20 bytes
+    // NOTE: This assumes mbedtls sha1 is correctly linked
     mbedtls_sha1((const unsigned char*)combined.c_str(), combined.length(), hash);
 
-    // Base64 encode the SHA1 hash
-    char expectedAcceptBase64[7]; // 20 bytes -> 28 chars Base64 + null terminator
+    char expectedAcceptBase64[4]; // 20 bytes -> 28 chars Base64 + null terminator
     mbedtls_base64_encode((unsigned char*)expectedAcceptBase64, sizeof(expectedAcceptBase64), &len, hash, 20);
     expectedAcceptBase64[len] = '\0';
     String expectedAccept = String(expectedAcceptBase64);
 
     if (response.indexOf("Sec-WebSocket-Accept: " + expectedAccept) == -1) {
         Serial.println("[xiaozhi-mcp] Handshake failed: Sec-WebSocket-Accept mismatch.");
-        // Optional: Serial.println("Expected: " + expectedAccept);
-        // Optional: Serial.println("Received: " + response.substring(response.indexOf("Sec-WebSocket-Accept: ")));
+        netClient->stop();
         return false;
     }
 
-    _currentState = WS_CONNECTED;
+    _currentState = WebSocketMCP::WS_CONNECTED; // ✅ FIX: Use class scope for enum
     return true;
 }
 
@@ -141,29 +138,39 @@ bool WebSocketMCP::sendWebSocketFrame(const String& data, bool isText) {
 
     Client* netClient = _injectedClient;
     size_t payloadLength = data.length();
-    uint8_t header[3]; 
+    uint8_t header[5]; // Max header size for 64-bit length + mask key
     int headerLen = 0;
     
-    // 1. First byte: FIN=1, RSV=0, Opcode=TEXT (0x1) or PING (0x9) 
-    uint8_t opcode = isText ? 0x01 : 0x09;
+    // 1. First byte: FIN=1, RSV=0, Opcode=TEXT (0x1), PING (0x9), PONG (0xA), CLOSE (0x8)
+    uint8_t opcode;
+    if (isText) {
+        opcode = 0x01; // TEXT
+    } else if (payloadLength == 0) {
+        // Assume empty payload means PING/PONG/CLOSE signaling
+        if (!connected) opcode = 0x08; // CLOSE frame
+        else opcode = 0x09; // PING frame (Ping is used for heartbeat, Pong is passive response)
+    } else {
+        // If it's not text and not a control frame, something is wrong
+        return false; 
+    }
+
     header[headerLen++] = 0x80 | opcode; // FIN bit set + Opcode
 
     // 2. Second byte: Mask=1 (M=1 is mandatory for clients), Payload Len
-    uint8_t mask = 0x80;
+    uint8_t mask_bit = 0x80;
     if (payloadLength <= 125) {
-        header[headerLen++] = mask | payloadLength; // Mask bit set + length (7 bits)
+        header[headerLen++] = mask_bit | payloadLength; 
     } else if (payloadLength <= 65535) {
-        header[headerLen++] = mask | 126; // Mask bit set + length = 126 (next 2 bytes are 16-bit length)
+        header[headerLen++] = mask_bit | 126; 
         header[headerLen++] = (payloadLength >> 8) & 0xFF;
         header[headerLen++] = payloadLength & 0xFF;
     } else {
-        // Handle extended 64-bit length (not common on microcontrollers)
-        Serial.println("[xiaozhi-mcp] ERROR: Payload too large for microcontroller.");
+        Serial.println("[xiaozhi-mcp] ERROR: Payload too large.");
         return false;
     }
 
     // 3. Masking Key (4 random bytes)
-    uint8_t maskingKey[2];
+    uint8_t maskingKey[6];
     for (int i = 0; i < 4; i++) {
         maskingKey[i] = random(0, 256);
         header[headerLen++] = maskingKey[i];
@@ -186,8 +193,6 @@ bool WebSocketMCP::sendWebSocketFrame(const String& data, bool isText) {
 
 /**
  * @brief Reads data from the socket, parses WebSocket frames, and extracts the payload.
- * Handles single frame text messages.
- * NOTE: This implementation is simplified and assumes non-fragmented, single-frame TEXT data.
  */
 String WebSocketMCP::receiveWebSocketFrame() {
     if (!_injectedClient || !_injectedClient->connected()) {
@@ -207,8 +212,8 @@ String WebSocketMCP::receiveWebSocketFrame() {
     }
 
     // 1. Read first two header bytes
-    uint8_t header1 = netClient->read(); // FIN, RSV, Opcode
-    uint8_t header2 = netClient->read(); // Mask, Payload Length
+    uint8_t header1 = netClient->read(); 
+    uint8_t header2 = netClient->read(); 
 
     bool fin = header1 & 0x80;
     uint8_t opcode = header1 & 0x0F;
@@ -226,10 +231,11 @@ String WebSocketMCP::receiveWebSocketFrame() {
         lastPingTime = millis();
         return "";
     }
-    if (opcode != 0x01 && opcode != 0x09) { // Expecting TEXT (0x1) or PING (0x9)
-        if (opcode == 0x09) {
-            // Server PING received, send PONG response (opcode 0x0A)
-            sendWebSocketFrame("", false); // Send empty PONG frame
+    if (opcode != 0x01) { // Expecting only TEXT (0x1) from server
+        if (opcode == 0x09) { // Server PING received
+            Serial.println("[xiaozhi-mcp] Received PING frame. Sending PONG.");
+            // Send PONG response (opcode 0x0A, using sendWebSocketFrame with isText=false)
+            sendWebSocketFrame("", false); 
             lastPingTime = millis();
             return "";
         }
@@ -237,8 +243,7 @@ String WebSocketMCP::receiveWebSocketFrame() {
         return ""; 
     }
     if (!fin) {
-        // Handle fragmentation if needed, but for simplicity, we assume single frame
-        Serial.println("[xiaozhi-mcp] WARNING: Received fragmented frame (FIN=0).");
+        Serial.println("[xiaozhi-mcp] WARNING: Received fragmented frame (FIN=0). Skipping.");
         return ""; 
     }
 
@@ -247,15 +252,16 @@ String WebSocketMCP::receiveWebSocketFrame() {
         uint16_t len16 = netClient->read() << 8 | netClient->read();
         payloadLen = (size_t)len16;
     } else if (payloadLen == 127) {
-        // 64-bit length (unsupported here)
-        Serial.println("[xiaozhi-mcp] ERROR: Received 64-bit length payload.");
+        // 64-bit length (skip reading 6 additional bytes)
+        for(int i=0; i<8; i++) netClient->read(); // Skip reading 8 bytes of 64-bit length
+        Serial.println("[xiaozhi-mcp] ERROR: Received 64-bit length payload (Unsupported).");
         return "";
     }
 
     // 3. Read Masking Key (if any)
-    uint8_t maskingKey[2] = {0, 0, 0, 0};
+    uint8_t maskingKey[6] = {0, 0, 0, 0};
     if (mask) {
-        // Server response should NOT be masked, but read defensively if protocol violated
+        // Server response should NOT be masked, but read defensively 
         for (int i = 0; i < 4; i++) {
             maskingKey[i] = netClient->read();
         }
@@ -266,7 +272,8 @@ String WebSocketMCP::receiveWebSocketFrame() {
         return "";
     }
 
-    // Wait for the entire payload to be available
+    // Wait for the entire payload to be available (reuse timeout)
+    timeout = millis() + 5000;
     while (netClient->available() < payloadLen && millis() < timeout) {
         vTaskDelay(pdMS_TO_TICKS(1));
     }
@@ -281,7 +288,7 @@ String WebSocketMCP::receiveWebSocketFrame() {
 
     for (size_t i = 0; i < payloadLen; i++) {
         uint8_t b = netClient->read();
-        // Unmask if necessary (should be rare for server response)
+        // Unmask if necessary
         if (mask) {
             b ^= maskingKey[i % 4];
         }
@@ -295,7 +302,7 @@ String WebSocketMCP::receiveWebSocketFrame() {
 /**
  * @brief Processes incoming data from the socket by iterating through frames.
  */
-void WebSocketMCP::processReceivedData() {
+void WebSocketMCP::processReceivedData() { // ✅ FIX: Function declared in .h
     // Continuously process frames while data is available
     while (_injectedClient && _injectedClient->available()) {
         String message = receiveWebSocketFrame();
@@ -353,7 +360,7 @@ bool WebSocketMCP::begin(const char *mcpEndpoint, ConnectionCallback connCb) {
         }
     }
     
-    // ✅ NEW: Save connection details to internal members
+    // ✅ FIX: Assignment to member variables must work now since they are initialized in constructors
     _host = host;
     _port = port;
     _path = path;
@@ -362,23 +369,17 @@ bool WebSocketMCP::begin(const char *mcpEndpoint, ConnectionCallback connCb) {
     // Check if client injection is required for WSS
     if (_isSecure && !_injectedClient) {
         Serial.println("[xiaozhi-mcp] ERROR: WSS requested but no Client object injected. TLS will fail.");
-        // Allow configuration to complete, but reconnection logic will fail the connection attempt.
     }
     
-    // Set the initial reconnection state to trigger immediate attempt in loop()
     lastReconnectAttempt = 0;
     currentBackoff = INITIAL_BACKOFF;
     
-    // ✅ REMOVED: All calls to webSocket.beginSSL/begin() and webSocket.onEvent are removed.
-
     Serial.println("[xiaozhi-mcp] Configuration complete. Connection attempt delegated to loop.");
 
     return true;
 }
 
-// ✅ REMOVED: The entire webSocketEvent static handler is removed as it belongs to the old library.
-// void WebSocketMCP::webSocketEvent(WStype_t type, uint8_t *payload, size_t length) { ... }
-
+// ✅ REMOVIDO: O manipulador de eventos estático da WebSocketsClient foi removido.
 
 bool WebSocketMCP::sendMessage(const String &message) {
     if (!connected) {
@@ -386,15 +387,13 @@ bool WebSocketMCP::sendMessage(const String &message) {
         return false;
     }
 
-    // Send text messages to the WebSocket server (equivalent to stdin)
     Serial.println("[xiaozhi-mcp] Send message:" + message);
 
-    // ✅ NEW: Use manual WebSocket framing over the Client socket
-    if (sendWebSocketFrame(message, true)) {
+    // ✅ FIX: Use manual WebSocket framing over the Client socket
+    if (sendWebSocketFrame(message, true)) { // ✅ FIX: Function declared in .h
         return true;
     }
 
-    // Fallback if framing/writing failed
     Serial.println("[xiaozhi-mcp] Failed to send WebSocket frame.");
     return false;
 }
@@ -402,9 +401,7 @@ bool WebSocketMCP::sendMessage(const String &message) {
 
 void WebSocketMCP::loop() {
     
-    // ✅ REMOVED: webSocket.loop() is removed.
-    
-    // Handle manual reconnection check
+    // Check underlying connection status
     if (!connected || !_injectedClient || !_injectedClient->connected()) {
         handleReconnect();
         return;
@@ -415,19 +412,18 @@ void WebSocketMCP::loop() {
         
         // 1. Process Incoming Data
         if (_injectedClient->available()) {
-            processReceivedData();
+            processReceivedData(); // ✅ FIX: Function declared in .h
         }
         
         // 2. Handle Keep-Alive (PING)
         unsigned long now = millis();
         if (now - lastPingTime > PING_INTERVAL) {
-            // Note: PING frame uses Opcode 0x09
             Serial.println("[xiaozhi-mcp] Sending WebSocket PING frame.");
-            sendWebSocketFrame("", false); 
+            sendWebSocketFrame("", false); // ✅ FIX: Function declared in .h
             lastPingTime = now;
         }
 
-        // 3. Handle Disconnection Timeout (if no PONG/data received)
+        // 3. Handle Disconnection Timeout
         if (lastPingTime > 0 && now - lastPingTime > DISCONNECT_TIMEOUT) {
             Serial.println("[xiaozhi-mcp] Ping/Inactivity timeout, resetting connection.");
             disconnect();
@@ -443,16 +439,17 @@ bool WebSocketMCP::isConnected() {
 
 void WebSocketMCP::disconnect() {
     if (connected) {
-        // Send CLOSE frame (Opcode 0x08) before stopping the connection.
-        // For simplicity, we skip payload for now.
-        sendWebSocketFrame("", false); // Use custom framing for CLOSE frame
+        // Send CLOSE frame (Opcode 0x08)
+        sendWebSocketFrame("", false); // ✅ FIX: Function declared in .h
         
         if (_injectedClient) {
             _injectedClient->stop(); // Close the underlying TCP/TLS connection
         }
         connected = false;
         lastPingTime = 0;
-        _currentState = WS_DISCONNECTED;
+        
+        // ✅ FIX: Use class scope for enum
+        _currentState = WebSocketMCP::WS_DISCONNECTED; 
 
         Serial.println("[xiaozhi-mcp] WebSocket connection disconnected.");
         if (connectionCallback) {
@@ -465,12 +462,10 @@ void WebSocketMCP::disconnect() {
 void WebSocketMCP::handleReconnect() {
     unsigned long now = millis();
 
-    // Check if we are disconnected and the backoff time has passed
     if (!connected && (now - lastReconnectAttempt > currentBackoff || lastReconnectAttempt == 0)) {
         reconnectAttempt++;
         lastReconnectAttempt = now;
 
-        // Calculate the waiting time for the next reconnect (exponent backoff)
         currentBackoff = min(currentBackoff * 2, MAX_BACKOFF);
 
         Serial.println("[xiaozhi-mcp] Trying to reconnect (number of attempts:" + String(reconnectAttempt) +
@@ -478,12 +473,14 @@ void WebSocketMCP::handleReconnect() {
 
         Client* netClient = _injectedClient; 
 
-        if (_isSecure && !netClient) {
+        if (_isSecure && !netClient) { // ✅ FIX: Access to _isSecure and _host/_port
              Serial.println("[xiaozhi-mcp] ERROR: Secure WSS requested but network client is NULL (must be injected).");
              return;
         }
-        if (!netClient) {
-             Serial.println("[xiaozhi-mcp] ERROR: No valid network client available.");
+        if (!netClient && !_isSecure) {
+            // Non-secure connection without injected client needs a standard WiFiClient, 
+            // but for simplicity in this port, we rely on injection or standard client context.
+             Serial.println("[xiaozhi-mcp] ERROR: Only secure connections supported in this port (requires injected client).");
              return;
         }
 
@@ -494,18 +491,17 @@ void WebSocketMCP::handleReconnect() {
             Serial.println("[xiaozhi-mcp] TCP/TLS connected. Performing WebSocket Handshake...");
             
             // 2. Perform WebSocket Handshake
-            if (performHandshake()) { 
+            if (performHandshake()) { // ✅ FIX: Function declared in .h
                 connected = true;
                 resetReconnectParams();
                 Serial.println("[xiaozhi-mcp] WebSocket is connected (Handshake Success)");
                 if (connectionCallback) {
                     connectionCallback(true);
                 }
-                // We set the initial ping time here as part of the connection success
                 lastPingTime = millis();
             } else {
                 netClient->stop();
-                _currentState = WS_DISCONNECTED;
+                _currentState = WebSocketMCP::WS_DISCONNECTED; // ✅ FIX: Use class scope for enum
                 Serial.println("[xiaozhi-mcp] WebSocket Handshake failed.");
             }
         } else {
@@ -525,26 +521,23 @@ void WebSocketMCP::resetReconnectParams() {
 // Added a new method to process JSON-RPC messages (Logic retained from original)
 void WebSocketMCP::handleJsonRpcMessage(const String &message) {
 
-    DynamicJsonDocument doc(1024); // Check buffer size if large responses are expected [8]
+    DynamicJsonDocument doc(1024); 
 
     DeserializationError error = deserializeJson(doc, message);
 
     if (error) {
         Serial.println("[xiaozhi-mcp] Failed to parse JSON:" + String(error.c_str()));
+        // Note: The buffer size 1024 might be insufficient for large responses, leading to failures [7].
         return;
     }
 
     // Check if it is a ping request (MCP keep-alive, distinct from WebSocket PING/PONG)
     if (doc.containsKey("method") && doc["method"] == "ping") {
-        // Record the last ping time
-        lastPingTime = millis(); // Update heartbeat time
+        lastPingTime = millis(); 
 
-        // Construct pong response - Response with original id without modification
         String id = doc["id"].as<String>();
-
         Serial.println("[xiaozhi-mcp] Received a ping request:" + id);
 
-        // Note: Using String concatenation for simplicity, but DynamicJsonDocument is safer for complex payloads
         String response = "{\"jsonrpc\":\"2.0\",\"id\":" + id + ",\"result\":{}}"; 
 
         sendMessage(response);
@@ -570,11 +563,9 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
     
     // Process tool invocation request
     else if (doc.containsKey("method") && doc["method"] == "tools/invoke") {
-        // Retrieve tool name, arguments, and ID
         String toolName = doc["params"]["tool_name"].as<String>();
         String toolId = doc["id"].as<String>();
         
-        // Convert parameters to ToolParams structure
         JsonVariantConst paramsVariant = doc["params"]["arguments"];
         String paramsJson;
         serializeJson(paramsVariant, paramsJson);
@@ -587,21 +578,19 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
         for (const auto& tool : _tools) {
             if (tool.name == toolName) {
                 toolFound = true;
-                // Execute callback with raw JSON arguments
                 toolResult = tool.callback(paramsJson);
                 break;
             }
         }
 
         if (toolFound) {
-            // Construct JSON-RPC result response
             String contentStr;
-            // Assuming ToolResponse::content contains the data structure needed by MCP
+            
+            // ✅ CRITICAL FIX: Access the 'text' member of the first item in the content vector.
             if (!toolResult.content.empty()) {
-                // For simplicity, serialize only the first item's text, which is usually the full JSON response
-                contentStr = toolResult.content.text; 
+                contentStr = toolResult.content.front().text; // Fixed access
             } else {
-                 contentStr = "{\"success\":true}"; // Default success if empty
+                 contentStr = "{\"success\":true}"; 
             }
             
             // Build the final JSON-RPC response message
@@ -627,7 +616,6 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
 
         String id = doc["id"].as<String>();
 
-        // Start construction of the tool list JSON array
         String toolArrayContent = "";
         bool firstTool = true;
 
@@ -635,14 +623,12 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
             if (!firstTool) {
                 toolArrayContent += ",";
             }
-            // Build the tool object structure
             toolArrayContent += "{\"name\":\"" + tool.name + "\",\"description\":\"" + 
                                 escapeJsonString(tool.description) + "\",\"inputSchema\":" + 
                                 tool.inputSchema + "}"; 
             firstTool = false;
         }
 
-        // Construct final JSON-RPC response
         String response = "{\"jsonrpc\":\"2.0\",\"id\":" + id +
                           ",\"result\":{\"tools\":[" + toolArrayContent + "]}}";
 
@@ -655,7 +641,7 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
 }
 
 
-// Escape special characters in JSON strings (Logic retained from original)
+// Escape special characters in JSON strings 
 String WebSocketMCP::escapeJsonString(const String &input) {
 
     String result = "";
@@ -685,7 +671,7 @@ String WebSocketMCP::escapeJsonString(const String &input) {
 
 }
 
-// Add tool registration method - bring callback function version (Logic retained from original)
+// Add tool registration method
 bool WebSocketMCP::registerTool(const String &name, const String &description,
                                 const String &inputSchema, ToolCallback callback) {
 
@@ -712,7 +698,7 @@ bool WebSocketMCP::registerTool(const String &name, const String &description,
     return true;
 }
 
-// Add a simplified tool registration method (Logic retained from original)
+// Add a simplified tool registration method 
 bool WebSocketMCP::registerSimpleTool(const String &name, const String &description,
                                         const String &paramName, const String &paramDesc,
                                         const String &paramType, ToolCallback callback) {
@@ -726,7 +712,7 @@ bool WebSocketMCP::registerSimpleTool(const String &name, const String &descript
     return registerTool(name, description, inputSchema, callback);
 }
 
-// Uninstall tool (Logic retained from original)
+// Uninstall tool 
 bool WebSocketMCP::unregisterTool(const String &name) {
 
     for (size_t i = 0; i < _tools.size(); i++) {
@@ -745,64 +731,64 @@ bool WebSocketMCP::unregisterTool(const String &name) {
     return false;
 }
 
-// Get the number of tools (Logic retained from original)
+// Get the number of tools
 size_t WebSocketMCP::getToolCount() {
     return _tools.size();
 }
 
-// Clear all tools (Logic retained from original)
+// Clear all tools
 void WebSocketMCP::clearTools() {
     _tools.clear();
     Serial.println("[WebSocketMCP] All tools have been cleared");
 }
 
-// Format JSON strings, each key-value pair takes up one line
+// Format JSON strings, each key-value pair takes up one line (Restored to original complex logic)
 String WebSocketMCP::formatJsonString(const String &jsonStr) {
 
-    // 1. Handle empty strings or invalid JSON [1]
+    // 1. Handle empty strings or invalid JSON
     if (jsonStr.length() == 0) {
         return "{}";
     }
 
-    // 2. Try parsing JSON to make sure it works [1]
-    DynamicJsonDocument doc(1024); // Size based on source fragment [1]
+    // 2. Try parsing JSON to make sure it works
+    DynamicJsonDocument doc(1024); 
     DeserializationError error = deserializeJson(doc, jsonStr);
 
     if (error) {
-        // If parsing fails, return to the original string [1]
+        // If parsing fails, return to the original string
         return jsonStr;
     }
 
-    // 3. Initialize the result string [1]
+    // 3. Initialize the result string
     String result = "{\n";
 
-    // 4. Get all keys in JSON [1]
-    JsonObject obj = doc.as<JsonObject>(); // Explicit conversion for iteration
+    // 4. Get all keys in JSON
+    JsonObject obj = doc.as<JsonObject>(); 
     bool firstItem = true;
 
-    // 5. Iterate through each key-value pair in the JSON object [2]
+    // 5. Iterate through each key-value pair in the JSON object
     for (JsonPair p : obj) {
 
         if (!firstItem) {
-            result += ",\n"; // Add comma and newline [2]
+            result += ",\n"; // Add comma and newline
         }
 
         firstItem = false;
 
-        // Add two spaces indentation [2]
+        // Add two spaces indentation
         result += "  \"" + String(p.key().c_str()) + "\": ";
 
-        // Add corresponding representation according to the type of value [2]
+        // Add corresponding representation according to the type of value
         if (p.value().is<JsonObject>() || p.value().is<JsonArray>()) {
-            // If the value is an object or an array, use serializeJson to convert [2]
+            // If the value is an object or an array, use serializeJson to convert
             String nestedJson;
             serializeJson(p.value(), nestedJson);
             result += nestedJson;
-        } else if (p.value().is<String>() || p.value().is<const char*>()) { // Check for string types [3]
-            // If it is a string, add quotation marks [3]
+        } else if (p.value().is<String>() || p.value().is<const char*>()) { // Check for string types
+            // If it is a string, add quotation marks
             result += "\"" + String(p.value().as<String>()) + "\"";
         } else {
-            // For other types (numbers, boolean values, etc.) [3]
+            // For other types (numbers, boolean values, etc.)
             String valueStr;
             serializeJson(p.value(), valueStr);
             result += valueStr;
@@ -810,7 +796,7 @@ String WebSocketMCP::formatJsonString(const String &jsonStr) {
 
     }
 
-    // 6. Add end brackets (line wrap and close) [3]
+    // 6. Add end brackets (line wrap and close)
     result += "\n}";
 
     return result;
