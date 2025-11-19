@@ -1,4 +1,3 @@
-
 #include "WebSocketMCP.h"
 
 // Static instance pointer initialization
@@ -10,21 +9,21 @@ const int WebSocketMCP::MAX_BACKOFF;
 const int WebSocketMCP::PING_INTERVAL;
 const int WebSocketMCP::DISCONNECT_TIMEOUT;
 
-WebSocketMCP::WebSocketMCP() : connected(false), lastReconnectAttempt(0), 
-                              currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0) {
-  // Setting static instance pointer
-  instance = this;
-  connectionCallback = nullptr;
-  _injectedClient = nullptr; // Garantee that default constructor is null
-}
-
-WebSocketMCP::WebSocketMCP(Client& client) : connected(false), lastReconnectAttempt(0),
-currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0) {
+WebSocketMCP::WebSocketMCP() : connected(false), lastReconnectAttempt(0),
+currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0), _injectedClient(nullptr) {
+    // Setting static instance pointer
     instance = this;
     connectionCallback = nullptr;
-    // Salva a referência do cliente configurado com o CA Root
-    _injectedClient = &client; 
-    Serial.println("[MCP Secure] injected and ready to WSS.");
+}
+
+// Implementation of the constructor that receives the Client reference
+WebSocketMCP::WebSocketMCP(Client& client) : connected(false), lastReconnectAttempt(0),
+currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0), _injectedClient(&client) {
+    // Setting static instance pointer
+    instance = this;
+    connectionCallback = nullptr;
+    // Log the successful injection of the Client
+    Serial.println("[xiaozhi-mcp] Network Client injected.");
 }
 
 bool WebSocketMCP::begin(const char *mcpEndpoint,  ConnectionCallback connCb) {
