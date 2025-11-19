@@ -188,7 +188,8 @@ bool WebSocketMCP::sendWebSocketFrame(const String& data, bool isText) {
         }
     }
     
-    return netClient->flush();
+    netClient->flush();
+    return true;
 }
 
 /**
