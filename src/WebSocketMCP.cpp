@@ -236,7 +236,7 @@ void WebSocketMCP::handleJsonRpcMessage(const String &message) {
       ",\"result\":{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"experimental\":{},\"prompts\":{\"listChanged\":false},\"resources\":{\"subscribe\":false,\"listChanged\":false},\"tools\":{\"listChanged\":false}},\"serverInfo\":{\"name\":\"" + serverName + "\",\"version\":\"1.0.0\"}}}";
     
     sendMessage(response);
-    Serial.println("[xiaozhi-mcp] Respond to initialize request")alize request");
+    Serial.println("[xiaozhi-mcp] Respond to initialize request");
     
     // Send initialized notifications
     sendMessage("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
@@ -405,7 +405,7 @@ size_t WebSocketMCP::getToolCount() {
 // Clear all tools
 void WebSocketMCP::clearTools() {
   _tools.clear();
-  Serial.println("[WebSocketMCP] All tools have been cleared") have been cleared");
+  Serial.println("[WebSocketMCP] All tools have been cleared");
 }
 
 // Format JSON strings, each key-value pair takes up one line
