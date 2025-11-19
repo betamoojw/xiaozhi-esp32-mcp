@@ -186,6 +186,7 @@ public:
   typedef void (*ConnectionCallback)(bool);
 
   WebSocketMCP();
+  WebSocketMCP(Client& client); 
 
   /* *
    * Initialize the WebSocket connection
@@ -240,6 +241,9 @@ public:
 
 private:
   WebSocketsClient webSocket;
+  // Used in begin() forcing WebSocketsClient to use this secure client.
+  Client* _injectedClient = nullptr; 
+
   ConnectionCallback connectionCallback;
 
   bool connected;
