@@ -15,6 +15,16 @@ WebSocketMCP::WebSocketMCP() : connected(false), lastReconnectAttempt(0),
   // Setting static instance pointer
   instance = this;
   connectionCallback = nullptr;
+  _injectedClient = nullptr; // Garantee that default constructor is null
+}
+
+WebSocketMCP::WebSocketMCP(Client& client) : connected(false), lastReconnectAttempt(0),
+currentBackoff(INITIAL_BACKOFF), reconnectAttempt(0) {
+    instance = this;
+    connectionCallback = nullptr;
+    // Salva a referência do cliente configurado com o CA Root
+    _injectedClient = &client; 
+    Serial.println("[MCP Secure] injected and ready to WSS.");
 }
 
 bool WebSocketMCP::begin(const char *mcpEndpoint,  ConnectionCallback connCb) {
@@ -54,11 +64,16 @@ bool WebSocketMCP::begin(const char *mcpEndpoint,  ConnectionCallback connCb) {
     }
   }
   
-  // Configuring the WebSocket Client
   if (protocol == "wss") {
-    webSocket.beginSSL(host.c_str(), port, path.c_str());
+      // Use secure client inserted
+      if (_injectedClient) {
+          // Usa a API da WebSocketsClient para definir o cliente TLS subjacente
+          webSocket.setClient(*_injectedClient);
+      }
+      // A chamada beginSSL agora utiliza o cliente que foi injetado (se configurado)
+      webSocket.beginSSL(host.c_str(), port, path.c_str());
   } else {
-    webSocket.begin(host.c_str(), port, path.c_str());
+      webSocket.begin(host.c_str(), port, path.c_str());
   }
   
   // Set the disconnect timeout to 60 seconds
