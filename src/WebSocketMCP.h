@@ -2,87 +2,34 @@
 #define WEBSOCKET_MCP_H
 
 #include <Arduino.h>
-#include <functional>
+#include <WiFiClient.h>
+#include <WiFiClientSecure.h> 
+#include <Client.h> 
 #include <vector>
-#include <ArduinoJson.h> 
-#include <WiFiClientSecure.h> // Necessary for TLS/WSS connections on ESP32
-#include <Client.h>           // Base class for network sockets
+#include <functional>
+#include <ArduinoJson.h> // Dependency for JSON handling
 
-/* *
- * WebSocketMCP Class
- * Encapsulates WebSocket connection and communication with MCP server
- */
+/* Global memory limits */
+// Defines fixed buffer sizes for communication parameters, crucial for stable stack/heap usage on ESP32-S3.
+#define MAX_URL_LENGTH 128
+#define MAX_PATH_LENGTH 64
+#define MAX_MESSAGE_LENGTH 1024 // Max size for incoming JSON/Tool response
 
-// Define the tool response content structure
-struct ToolContentItem {
-    String type; // Content type, such as "text"
-    String text; // Text content
-};
-
-// Define tool response structure
+// Forward declaration for minimal ToolResponse structure
 class ToolResponse {
 public:
-    std::vector<ToolContentItem> content; // Response content array
-    bool isError; // Is it an error response
-
-    // Constructor: Create a response from a single text content (used for JSON response)
-    ToolResponse(const String& textContent, bool error = false) : isError(error) {
-        ToolContentItem item;
-        item.type = "text";
-        item.text = textContent;
-        content.push_back(item);
-    }
-
-    // Constructor: Create a response from a boolean status and message (used for text response)
-    ToolResponse(bool error, const String& message) {
-        ToolContentItem item;
-        item.type = "text";
-        item.text = message;
-        content.push_back(item);
-        isError = error;
-    }
-
-    // Default constructor
-    ToolResponse() : isError(false) {}
-
-    // Create a response from a JSON object (convenient method)
-    static ToolResponse fromJson(const JsonObject& json, bool error = false) {
-        String jsonStr;
-        serializeJson(json, jsonStr);
-        return ToolResponse(jsonStr, error);
-    }
-};
-
-// Auxiliary class for parameter processing
-class ToolParams {
-
-public:
-    ToolParams(const String& json) {
-        // Assume doc has sufficient capacity or is statically allocated correctly.
-        DeserializationError error = deserializeJson(doc, json);
-        valid = !error;
-    }
-
-    // Static factory method from JsonVariantConst
-    static ToolParams fromVariant(const JsonVariantConst& variant) {
-        String variantJson;
-        serializeJson(variant, variantJson);
-        return ToolParams(variantJson);
-    }
-
+    // Constructor uses const char* instead of String
+    ToolResponse(bool err = false, const char* msg = ""); 
     bool isValid() const { return valid; }
-    String getString(const String& key) const { return doc[key].as<String>(); }
-    int getInt(const String& key, int defaultValue = 0) const { return doc[key].as<int>() ? doc[key].as<int>() : defaultValue; }
-    bool getBool(const String& key, bool defaultValue = false) const { return doc[key].as<bool>() ? doc[key].as<bool>() : defaultValue; }
-    float getFloat(const String& key, float defaultValue = 0.0f) const { return doc[key].as<float>() ? doc[key].as<float>() : defaultValue; }
-
 private:
-    StaticJsonDocument<512> doc;
+    // Using a fixed static size for simple tool responses (minimizing heap allocation)
+    StaticJsonDocument<256> doc; 
     bool valid = false;
+    bool error = false; 
 };
 
-// Redefine the tool callback function type - receive JSON string parameters and return the ToolResponse structure
-typedef std::function<ToolResponse(const String&)> ToolCallback;
+// Redefine the tool callback function type - input is now C-style string
+typedef std::function<ToolResponse(const char*)> ToolCallback;
 
 // Callback type definition
 typedef void (*ConnectionCallback)(bool);
@@ -90,26 +37,24 @@ typedef void (*ConnectionCallback)(bool);
 class WebSocketMCP {
 
 public:
-    // Original Constructor
-    WebSocketMCP();
-
-    // NEW CONSTRUCTOR: Accepts a reference to the configured Client object (for TLS injection).
-    WebSocketMCP(Client& client); 
+    // Only accepts Client reference (TLS/Secure)
+    WebSocketMCP(Client& client);
 
     /* *
     * Initialize the WebSocket connection
-    * @param mcpEndpoint WebSocket server address (ws://host:port/path)
+    * @param mcpEndpoint WebSocket server address (wss://host:port/path)
     * @param connCb Connection state change callback function
     * @return Whether the initialization is successful
     */
     bool begin(const char *mcpEndpoint, ConnectionCallback connCb = nullptr);
 
     /* *
-    * Send data to the WebSocket server (equivalent to stdin)
-    * @param message message to send
+    * Send data to the WebSocket server (EFFICIENT VERSION: C-style buffer)
+    * @param message C-style string buffer to send
+    * @param length length of the message
     * @return Whether the sending is successful
     */
-    bool sendMessage(const String &message);
+    bool sendMessage(const char *message, size_t length);
 
     /* *
     * Handle WebSocket events and keep connections
@@ -130,80 +75,79 @@ public:
 
     // --- Tool registration and management methods (MCP Protocol) ---
 
-    bool registerTool(const String &name, const String &description, const String &inputSchema, ToolCallback callback);
-    bool registerSimpleTool(const String &name, const String &description,
-                            const String &paramName, const String &paramDesc,
-                            const String &paramType, ToolCallback callback);
-    bool unregisterTool(const String &name);
+    // All String inputs replaced with const char*
+    bool registerTool(const char *name, const char *description, const char *inputSchema, ToolCallback callback);
+    bool unregisterTool(const char *name);
     size_t getToolCount();
     void clearTools();
 
 private:
-    // REMOVED: WebSocketsClient webSocket;
 
-    // Pointer to the injected client (WiFiClientSecure)
-    // Used by the rewritten network implementation.
-    Client* _injectedClient = nullptr; 
+    Client* _injectedClient = nullptr;
 
-    // Internal enumeration for WebSocket State Management (REQUIRED FOR NATIVE)
     enum WsState {
         WS_DISCONNECTED,
         WS_HANDSHAKING,
         WS_CONNECTED
     };
-    
-    // FIX: New members declared here, consistent with the .cpp initialization lists
+
     WsState _currentState = WS_DISCONNECTED;
-    String _host;
+    
+    // Fixed C-style arrays replace String members, ensuring stable memory layout
+    char _host[MAX_URL_LENGTH]; 
     uint16_t _port;
-    String _path;
+    char _path[MAX_PATH_LENGTH]; 
     bool _isSecure = false;
 
     ConnectionCallback connectionCallback;
 
-    bool connected;
-    unsigned long lastReconnectAttempt;
+    bool connected = false;
+    unsigned long lastReconnectAttempt = 0;
 
     // Reconnect settings
-    static const int INITIAL_BACKOFF = 1000; 
-    static const int MAX_BACKOFF = 60000; 
-    static const int PING_INTERVAL = 10000; 
-    static const int DISCONNECT_TIMEOUT = 60000; 
+    static const int INITIAL_BACKOFF;
+    static const int MAX_BACKOFF;
+    static const int PING_INTERVAL;
+    static const int DISCONNECT_TIMEOUT;
 
     int currentBackoff;
     int reconnectAttempt;
 
-    // FIX: Declarations for the new native WebSocket functions
-    bool performHandshake();
-    bool sendWebSocketFrame(const String& data, bool isText);
-    String receiveWebSocketFrame();
-    void processReceivedData();
+    // Internal message buffer to hold received payload data
+    char _receiveBuffer[MAX_MESSAGE_LENGTH]; 
 
+    // Internal functions for framing and protocol
+    bool performHandshake();
+    bool sendWebSocketFrame(const char* data, size_t length, bool isText); 
+    
+    // receiveWebSocketFrame now returns the length (size_t)
+    size_t receiveWebSocketFrame(); 
+    void processReceivedData();
 
     // Reconnect processing
     void handleReconnect();
     void resetReconnectParams();
 
-    // Static instance pointer definition (needed for potential static callbacks, although most are member functions now)
     static WebSocketMCP *instance;
 
     unsigned long lastPingTime = 0;
-    void handleJsonRpcMessage(const String &message);
 
-    // Tool structure definition
+    // handleJsonRpcMessage now accepts C-style buffer and length
+    void handleJsonRpcMessage(const char *message, size_t length);
+
+    // Tool structure definition, updated to use const char*
     struct Tool {
-        String name; 
-        String description; 
-        String inputSchema; 
+        const char *name;
+        const char *description;
+        const char *inputSchema;
         ToolCallback callback;
     };
 
     // Tool list
     std::vector<Tool> _tools;
 
-    // Auxiliary methods
-    String escapeJsonString(const String &input);
-    String formatJsonString(const String &jsonStr);
+    // Auxiliary methods 
+    int escapeJsonString(const char *input, char *output, size_t max_len);
 };
 
 #endif // WEBSOCKET_MCP_H
