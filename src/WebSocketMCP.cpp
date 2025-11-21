@@ -206,7 +206,7 @@ bool WebSocketMCP::begin(const char* mcpEndpoint, ConnectionCallback connCb) {
         }
         char endpointBuf[256];
         snprintf(endpointBuf, sizeof(endpointBuf),
-                 "wss://api.xiaozhi.me/mcp/?token=%s", token.c_str());
+                 "wss://api.xiaozhi.me/xiaozhi/v1/?token=%s", token.c_str());
         mcpEndpoint = endpointBuf;
         ESP_LOGI(TAG, "Using saved token from NVS");
     }
@@ -646,3 +646,5 @@ bool WebSocketMCP::unregisterTool(const char* name) {
 
 size_t WebSocketMCP::getToolCount() { return _tools.size(); }
 void WebSocketMCP::clearTools() { _tools.clear(); }
+
+
