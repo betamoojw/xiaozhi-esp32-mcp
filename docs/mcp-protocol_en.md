@@ -1,4 +1,4 @@
-#MCP (Model Context Protocol) interaction process
+# MCP (Model Context Protocol) interaction process
 
 NOTICE: AI-assisted generation, when implementing background services, please refer to the code to confirm the details!!
 
