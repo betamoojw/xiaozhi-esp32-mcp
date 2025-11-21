@@ -54,7 +54,7 @@ lib_deps =
 ## 🚀 Quick Start
 
 ### 1. Activate your device
-Go to [`https://xiaozhi.me/activate?code=Fx5L4pDZqw`](https://xiaozhi.me/activate?code=Fx5L4pDZqw) and enter your **6-digit agent code**.
+Go to [`https://xiaozhi.me/activate?code=yourAgentCodeHere`](https://xiaozhi.me/activate?code=yourAgentCodeHere) and enter your **6-digit agent code**.
 
 ### 2. Minimal sketch
 ```cpp
@@ -85,7 +85,7 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED) delay(500);
 
     // ⚡ ONE-LINE ACTIVATION (no token handling!)
-    mcp.beginWithAgentCode("Fx5L4pDZqw", onMcpConnect);
+    mcp.beginWithAgentCode("yourAgentCodeHere", onMcpConnect);
 }
 
 void loop() {
