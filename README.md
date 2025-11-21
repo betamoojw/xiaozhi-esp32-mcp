@@ -6,7 +6,7 @@
 
 > **Production-ready Model Context Protocol (MCP) client for XiaoZhi AI devices**, enabling ESP32-based hardware (e.g., Grove Vision AI, SenseCap Watcher) to integrate with XiaoZhi’s cloud LLM for real-time perception, reasoning, and action.
 
-![XiaoZhi MCP Flow](https://github.com/djairjr/xiaozhi-esp32-mcp/raw/alpha/docs/mcp-flow-diagram.png?raw=true)  
+![XiaoZhi MCP Flow](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/mcp-based-graph.jpg)  
 *(Simplified MCP interaction — see full sequence in [`docs/mcp-protocol_en.md`](docs/mcp-protocol_en.md))*
 
 ---
