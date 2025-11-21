@@ -28,8 +28,6 @@
 #define MAX_PATH_LENGTH     64    // Max endpoint path length
 #define MAX_MESSAGE_LENGTH  1024  // Max incoming JSON/tool response size
 
-// Forward declarations to avoid heavy includes in header
-class DynamicJsonDocument;
 
 /**
  * @brief Lightweight response wrapper for tool callbacks.
@@ -182,6 +180,7 @@ private:
     uint16_t _port;
     char _path[MAX_PATH_LENGTH];
     bool _isSecure;
+	char _sessionId[64] = {0}; 
 
     // Reconnection backoff strategy
     ConnectionCallback _connectionCallback;
