@@ -3,6 +3,7 @@
 [![ESP32](https://img.shields.io/badge/ESP32-S3%2FC3%2FP4-000?logo=espressif)](https://www.espressif.com)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Arduino](https://img.shields.io/badge/Arduino-IDE%202.x-blue)](https://www.arduino.cc)
+[Xiaozhi Esp32 Server](https://deepwiki.com/xinnan-tech/xiaozhi-esp32-server/1-overview) 
 
 > **Production-ready Model Context Protocol (MCP) client for XiaoZhi AI devices**, enabling ESP32-based hardware (e.g., Grove Vision AI, SenseCap Watcher) to integrate with XiaoZhi’s cloud LLM for real-time perception, reasoning, and action.
 
