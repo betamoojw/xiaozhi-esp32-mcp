@@ -132,24 +132,6 @@ All protocol details are sourced from the official XiaoZhi docs:
 | [`SmartSwitch`](examples/SmartSwitch) | 6-channel relay control via LLM (`tool_call`) |
 | [`Basic_Example`](examples/Basic_Example) | Minimal activation + LED control |
 
----
-
-## ⚙️ Configuration
-
-### Memory Footprint
-| Resource | Usage |
-|---------|-------|
-| RAM (static) | < 8 KB |
-| PSRAM | 0 KB (preserved for vision streaming) |
-| Flash | ~24 KB |
-
-### Stack Sizes (FreeRTOS)
-| Task | Recommended Size |
-|------|-------------------|
-| `MCP_Network` (Core 0) | 10240 bytes |
-| `Vision_Loop` (Core 1) | 8192 bytes |
-
----
 
 ## 🛠️ Development
 
