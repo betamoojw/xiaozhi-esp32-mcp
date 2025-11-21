@@ -129,7 +129,6 @@ All protocol details are sourced from the official XiaoZhi docs:
 
 | Example | Description |
 |--------|-------------|
-| [`Vision_AI_MCP`](examples/Vision_AI_MCP) | Grove Vision AI + person detection + LLM reasoning (your use case) |
 | [`SmartSwitch`](examples/SmartSwitch) | 6-channel relay control via LLM (`tool_call`) |
 | [`Basic_Example`](examples/Basic_Example) | Minimal activation + LED control |
 
