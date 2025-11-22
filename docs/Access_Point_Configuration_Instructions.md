@@ -2,11 +2,11 @@
 
 ## Overview: A powerful interface for extending AI capabilities through remote control, computation, email operations, knowledge search, and more.
 
-MCP (Model Context Protocol): A protocol that allows servers to expose callable tools to language models. These tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations. Each tool is identified by a unique name and contains metadata describing its schema.
+*MCP (Model Context Protocol)*: A protocol that allows servers to expose callable tools to language models. These tools enable models to interact with external systems, such as querying databases, calling APIs, or performing computations. Each tool is identified by a unique name and contains metadata describing its schema.
 
-MCP Access Point: An interface used by voice terminals to connect local MCP services to Xiaozhi AI's large models.
+*MCP Access Point*: An interface used by voice terminals to connect local MCP services to Xiaozhi AI's large models.
 
-Obtaining the MCP Access Point: Log in to the xiaozhi.me console, go to the agent's configuration role page, and you will see the agent's dedicated MCP access point in the lower right corner.
+*Obtaining the MCP Access Point*: Log in to the *xiaozhi.me* console, go to the agent's configuration role page, and you will see the agent's dedicated MCP access point in the lower right corner.
 
 ![Image](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/XiaoZhi1280X1280.PNG)
 
