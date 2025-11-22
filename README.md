@@ -11,10 +11,15 @@
 *(Simplified MCP interaction — see full sequence in [`docs/mcp-protocol_en.md`](docs/mcp-protocol_en.md))*
 ---
 ## Documentation
+
 [XiaoZhi_MCP_Authentication_Connection_Guide](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/XiaoZhi_MCP_Authentication_Connection_Guide.md)
+
 [Access_Point_Configuration_Instructions](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/Access_Point_Configuration_Instructions.md)
+
 [MCP Protocol](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/mcp-protocol_en.md)
+
 [WebSockets](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/websocket_en.md)
+
 ---
 
 ## ✨ Key Features
