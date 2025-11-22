@@ -9,17 +9,19 @@
 
 ![XiaoZhi MCP Flow](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/mcp-based-graph.jpg)  
 *(Simplified MCP interaction — see full sequence in [`docs/mcp-protocol_en.md`](docs/mcp-protocol_en.md))*
+
 ---
-## Documentation
 
-[XiaoZhi_MCP_Authentication_Connection_Guide](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/XiaoZhi_MCP_Authentication_Connection_Guide.md)
+## 📚 Documentation
 
-[Access_Point_Configuration_Instructions](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/Access_Point_Configuration_Instructions.md)
+All protocol details are sourced from the official XiaoZhi docs:
 
-[MCP Protocol](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/mcp-protocol_en.md)
+- [`docs/websocket_en.md`](docs/websocket_en.md) — WebSocket handshake, headers, message types
+- [`docs/mcp-protocol_en.md`](docs/mcp-protocol_en.md) — MCP JSON-RPC flow, tool registration, error codes
+- [`docs/mqtt-udp_en.md`](docs/mqtt-udp_en.md) — Alternative transport (future support)
+- [XiaoZhi_MCP_Authentication_Connection_Guide](docs/XiaoZhi_MCP_Authentication_Connection_Guide.md)
 
-[WebSockets](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/websocket_en.md)
-
+> ℹ️ This library implements **only the WebSocket transport** for MCP, as it’s the simplest and most firewall-friendly option.
 ---
 
 ## ✨ Key Features
@@ -132,18 +134,6 @@ This library implements **exactly** the flow described in XiaoZhi’s official d
 
 ![MCP Sequence](https://github.com/djairjr/xiaozhi-esp32-mcp/raw/alpha/docs/mcp-sequence.png?raw=true)  
 *(Full sequence diagram — see [`docs/mcp-protocol_en.md`](docs/mcp-protocol_en.md))*
-
----
-
-## 📚 Documentation
-
-All protocol details are sourced from the official XiaoZhi docs:
-
-- [`docs/websocket_en.md`](docs/websocket_en.md) — WebSocket handshake, headers, message types
-- [`docs/mcp-protocol_en.md`](docs/mcp-protocol_en.md) — MCP JSON-RPC flow, tool registration, error codes
-- [`docs/mqtt-udp_en.md`](docs/mqtt-udp_en.md) — Alternative transport (future support)
-
-> ℹ️ This library implements **only the WebSocket transport** for MCP, as it’s the simplest and most firewall-friendly option.
 
 ---
 
