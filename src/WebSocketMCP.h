@@ -25,7 +25,7 @@
 
 // Buffer size limits (adjust if needed, but keep conservative for ESP32-S3)
 #define MAX_URL_LENGTH      128   // Max hostname length
-#define MAX_PATH_LENGTH     64    // Max endpoint path length
+#define MAX_PATH_LENGTH     512    // Max endpoint path length
 #define MAX_MESSAGE_LENGTH  1024  // Max incoming JSON/tool response size
 
 
@@ -94,6 +94,7 @@ public:
      */
     bool begin(const char* mcpEndpoint, ConnectionCallback connCb = nullptr);
 
+
     // === XiaoZhi Activation Flow (recommended for new deployments) ===
     
     /**
@@ -109,7 +110,7 @@ public:
      * @return true if activation flow started successfully.
      */
     bool beginWithAgentCode(const char* agentCode, ConnectionCallback connCb = nullptr);
-
+	bool activateWithAgentCode(const char* agentCode);
     /**
      * @brief Check if device is already activated (token exists in NVS).
      * @return true if a valid JWT token is stored and ready for use.
@@ -161,6 +162,7 @@ public:
                       const char* inputSchema, ToolCallback callback);
 
     bool unregisterTool(const char* name);
+	bool saveTokenToNVS(const char* token);
     size_t getToolCount();
     void clearTools();
 
@@ -214,14 +216,17 @@ private:
     void handleReconnect();
     void resetReconnectParams();
     void handleJsonRpcMessage(const char* message, size_t length);
+	bool parseActivationResponse(const String& jsonStr);
 
     // NVS helpers (private implementation — no Preferences.h in header)
     String loadTokenFromNVS();
-    bool saveTokenToNVS(const char* token);
+    
 
     // Activation state during beginWithAgentCode()
     bool _awaitingActivation;
     char _pendingAgentCode[16]; // Holds agent code during activation handshake
+	int _activationRetryCount; 
+	static const int MAX_ACTIVATION_RETRIES = 3;
 };
 
 #endif // WEBSOCKET_MCP_H
