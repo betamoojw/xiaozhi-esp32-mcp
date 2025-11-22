@@ -14,7 +14,7 @@ Sample code
 GitHub: https://github.com/78/mcp-calculator
 
 ## MCP example
-´´´
+```
 # server.py
 from mcp.server.fastmcp import FastMCP
 import logging
@@ -36,7 +36,7 @@ return {"success": True, "result": result}
 
 # Start the server
 if __name__ == "__main__": `mcp.run(transport="stdio")`
-´´´
+```
 
 ## Important Notes⚠️
 1. The names of tools and parameters in MCP must clearly indicate their function to the large model. Avoid abbreviations as much as possible, and provide comments explaining the tool's purpose and when to use it. For example, `calculator` tells the large model it's a calculator, and the parameter `python_expression` requires the large model to input a Python expression. If you're writing a `bing_search` tool, its parameter name should be `keywords`.
@@ -52,7 +52,7 @@ if __name__ == "__main__": `mcp.run(transport="stdio")`
 6. There is an upper limit to the number of connections per MCP access point.
 
 ## Operation effect
-´´´
+```
 % export MCP_ENDPOINT=<your_mcp_endpoint>
 % python mcp_pipe.py calculator.py
 2025-05-16 09:07:09,009 - MCP_PIPE - INFO - Connecting to WebSocket server...
@@ -63,7 +63,7 @@ Processing request of type CallToolRequest
 Calculating formula: 3.14159 * (8 / 2) ** 2, result: 50.26544
 Processing request of type CallToolRequest
 Calculating formula: random.randint(1, 100), result: 11
-´´´
+```
 
 Dialogue content
 
