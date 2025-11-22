@@ -77,31 +77,42 @@ WiFiClientSecure client;
 WebSocketMCP mcp(client);
 
 void onMcpConnect(bool connected) {
-    if (connected) {
-        Serial.println("✅ Connected to XiaoZhi");
-        // Register tools AFTER connection (MCP spec)
-        mcp.registerTool("report_result", "Detect person wearing glasses",
-            R"({"type":"object","properties":{"context_detected":{"type":"boolean"}}})",
-            [](const char* args) -> ToolResponse {
-                if (strstr(args, "\"context_detected\":true"))
-                    digitalWrite(LED_BUILTIN, HIGH);
-                return ToolResponse(false, "{\"success\":true}");
-            });
-    }
+  if (connected) {
+    Serial.println("✅ MCP Connected");
+    // Register tools AFTER connection (per MCP spec)
+    mcp.registerTool(
+      "report_result",
+      "Reports detection result",
+      R"({"type":"object","properties":{"context_detected":{"type":"boolean"}}})",
+      [](const char* args) -> ToolResponse {
+        bool detected = strstr(args, "\"context_detected\":true");
+        digitalWrite(LED_BUILTIN, detected ? HIGH : LOW);
+        return ToolResponse(false, "{\"success\":true}");
+      }
+    );
+  } else {
+    Serial.println("❌ MCP Disconnected");
+  }
 }
 
 void setup() {
-    Serial.begin(115200);
-    WiFi.begin("YOUR_SSID", "YOUR_PASS");
-    while (WiFi.status() != WL_CONNECTED) delay(500);
+  Serial.begin(115200);
+  pinMode(LED_BUILTIN, OUTPUT);
 
-    // ⚡ ONE-LINE ACTIVATION (no token handling!)
-    mcp.beginWithAgentCode("yourAgentCodeHere", onMcpConnect);
+  WiFi.begin("YOUR_SSID", "YOUR_PASSWORD");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\n✅ Wi-Fi Connected");
+
+  // 🔑 One-line activation & connection
+  mcp.beginWithAgentCode("YOUR_AGENT_CODE", onMcpConnect);
 }
 
 void loop() {
-    mcp.loop(); // Handles reconnect, ping, MCP messages
-    delay(10);
+  mcp.loop(); // Handles reconnect, ping, MCP messages
+  delay(10);
 }
 ```
 
