@@ -8,7 +8,7 @@ MCP Access Point: An interface used by voice terminals to connect local MCP serv
 
 Obtaining the MCP Access Point: Log in to the xiaozhi.me console, go to the agent's configuration role page, and you will see the agent's dedicated MCP access point in the lower right corner.
 
-[Image]
+[Image](https://github.com/djairjr/xiaozhi-esp32-mcp/blob/alpha/docs/XiaoZhi1280X1280.PNG)
 
 Sample code
 GitHub: https://github.com/78/mcp-calculator
